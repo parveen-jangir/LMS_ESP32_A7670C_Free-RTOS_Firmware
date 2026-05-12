@@ -35,6 +35,7 @@
 #define PIN_SCP_SOIL    36          // Soil_Vce SCP monitor (input)
 #define PIN_SCP_MPU     39          // MPU_Vce SCP monitor  (input)
 #define PIN_SCP_WEATHER 34          // Weather_Vce SCP monitor (input)
+#define SCP_LOW_Voltage 1000
 // Note: IO34,36,39 are input-only on ESP32 — correct usage
 
 // ── Sensor Update Interval ───────────────────────────────────
@@ -52,3 +53,4 @@
 // ── MPU6050 I2C Address ──────────────────────────────────────
 // AD0 → GND = 0x68
 #define MPU6050_ADDR    0x68
+#define MPU6050_INT_PIN 15
