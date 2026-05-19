@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 WebSocket Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  /* ── Design tokens ───────────────────────────────────────── */
+  :root {
+    --bg:          #0d0f0e;
+    --surface:     #141716;
+    --surface2:    #1c1f1d;
+    --border:      #2a2e2c;
+    --border-hi:   #3d4340;
+    --accent:      #00e5a0;
+    --accent-dim:  #00b07c;
+    --accent-glow: rgba(0,229,160,.18);
+    --warn:        #ffb800;
+    --danger:      #ff4d4d;
+    --text:        #d4dbd8;
+    --text-dim:    #7a8884;
+    --text-muted:  #4a5250;
+    --sent-color:  #6ab4ff;
+    --recv-color:  #00e5a0;
+    --sys-color:   #ffb800;
+    --font-mono:   'IBM Plex Mono', monospace;
+    --font-sans:   'IBM Plex Sans', sans-serif;
+    --radius:      4px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    overflow: hidden;
+  }
+
+  /* ── Scanline overlay ───────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,.07) 2px,
+      rgba(0,0,0,.07) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  .shell {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    height: 100vh;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px 24px;
+    gap: 16px;
+  }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-icon {
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--accent);
+    border-radius: var(--radius);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 0 12px var(--accent-glow), inset 0 0 8px var(--accent-glow);
+  }
+
+  .brand-icon svg { display: block; }
+
+  .brand-text h1 {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .brand-text p {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+
+  /* ── Status pill ─────────────────────────────────────────── */
+  .status-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  #statusPill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    transition: border-color .3s, background .3s;
+  }
+
+  #statusPill.connected {
+    border-color: var(--accent-dim);
+    background: rgba(0,229,160,.06);
+    color: var(--accent);
+  }
+
+  #statusPill.connecting {
+    border-color: var(--warn);
+    background: rgba(255,184,0,.06);
+    color: var(--warn);
+  }
+
+  #statusPill.disconnected {
+    border-color: var(--danger);
+    background: rgba(255,77,77,.06);
+    color: var(--danger);
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  #statusPill.connected   .dot { animation: pulse 2s ease-in-out infinite; }
+  #statusPill.connecting  .dot { animation: blink .7s step-end infinite; }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+    50%      { opacity: .7; box-shadow: 0 0 0 3px transparent; }
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .endpoint-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: .04em;
+  }
+
+  /* ── Stats row ───────────────────────────────────────────── */
+  .stats-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .stat-val {
+    color: var(--text);
+    font-weight: 600;
+    min-width: 20px;
+    text-align: right;
+  }
+
+  /* ── Main panel ──────────────────────────────────────────── */
+  .panel {
+    display: grid;
+    grid-template-rows: 1fr;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Corner label */
+  .panel::before {
+    content: 'CONSOLE OUTPUT';
+    position: absolute;
+    top: 0; left: 0;
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .1em;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    border-radius: 0 0 var(--radius) 0;
+    z-index: 1;
+  }
+
+  #log {
+    padding: 36px 14px 14px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    scroll-behavior: smooth;
+  }
+
+  #log::-webkit-scrollbar { width: 6px; }
+  #log::-webkit-scrollbar-track { background: transparent; }
+  #log::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+
+  /* ── Log entries ─────────────────────────────────────────── */
+  .entry {
+    display: grid;
+    grid-template-columns: 70px 50px 1fr;
+    gap: 10px;
+    align-items: baseline;
+    padding: 3px 6px;
+    border-radius: 2px;
+    animation: fadeIn .2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .entry:hover { background: rgba(255,255,255,.025); }
+
+  .entry-time {
+    color: var(--text-muted);
+    font-size: 10px;
+    white-space: nowrap;
+    padding-top: 2px;
+  }
+
+  .entry-tag {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 2px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .tag-sent     { color: var(--sent-color); background: rgba(106,180,255,.1); border: 1px solid rgba(106,180,255,.25); }
+  .tag-recv     { color: var(--recv-color); background: rgba(0,229,160,.1);  border: 1px solid rgba(0,229,160,.25); }
+  .tag-sys      { color: var(--sys-color);  background: rgba(255,184,0,.1);  border: 1px solid rgba(255,184,0,.25); }
+  .tag-err      { color: var(--danger);     background: rgba(255,77,77,.1);  border: 1px solid rgba(255,77,77,.25); }
+
+  .entry-msg { color: var(--text); word-break: break-all; }
+  .entry-msg.sent { color: var(--sent-color); }
+  .entry-msg.recv { color: var(--recv-color); }
+  .entry-msg.sys  { color: var(--text-dim); }
+  .entry-msg.err  { color: var(--danger); }
+
+  /* JSON pretty-print */
+  .json-key   { color: #a8c5ff; }
+  .json-str   { color: #98e4b4; }
+  .json-num   { color: #ffcc80; }
+  .json-bool  { color: #ff9f7e; }
+
+  /* ── Input row ───────────────────────────────────────────── */
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  #msgInput {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+
+  #msgInput:focus {
+    border-color: var(--accent-dim);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+  }
+
+  #msgInput::placeholder { color: var(--text-muted); }
+
+  #msgInput:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+  }
+
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    transition: background .15s, transform .1s, box-shadow .15s;
+    white-space: nowrap;
+  }
+
+  button:active { transform: translateY(1px); }
+
+  #sendBtn {
+    background: var(--accent);
+    color: #050f0a;
+    min-width: 80px;
+  }
+
+  #sendBtn:hover:not(:disabled) {
+    background: #1afcb5;
+    box-shadow: 0 0 16px rgba(0,229,160,.4);
+  }
+
+  #sendBtn:disabled {
+    background: var(--surface2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+
+  #clearBtn {
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+
+  #clearBtn:hover {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  /* ── Footer ──────────────────────────────────────────────── */
+  footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+
+  #reconnectBar {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    color: var(--warn);
+  }
+
+  #reconnectBar.visible { display: flex; }
+
+  .progress-track {
+    width: 100px;
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--warn);
+    border-radius: 2px;
+    transition: width .1s linear;
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── Header ──────────────────────────────────────────── -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
+        <!-- ESP32 chip icon -->
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+             xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="12" height="12" rx="1"
+                stroke="#00e5a0" stroke-width="1.2"/>
+          <rect x="7" y="7" width="6" height="6" rx=".5"
+                fill="none" stroke="#00e5a0" stroke-width="1"/>
+          <!-- pins left -->
+          <line x1="1" y1="7"  x2="4" y2="7"  stroke="#00e5a0" stroke-width="1"/>
+          <line x1="1" y1="10" x2="4" y2="10" stroke="#00e5a0" stroke-width="1"/>
+          <line x1="1" y1="13" x2="4" y2="13" stroke="#00e5a0" stroke-width="1"/>
+          <!-- pins right -->
+          <line x1="16" y1="7"  x2="19" y2="7"  stroke="#00e5a0" stroke-width="1"/>
+          <line x1="16" y1="10" x2="19" y2="10" stroke="#00e5a0" stroke-width="1"/>
+          <line x1="16" y1="13" x2="19" y2="13" stroke="#00e5a0" stroke-width="1"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>ESP32 · WebSocket Console</h1>
+        <p>192.168.4.1 &nbsp;/&nbsp; port 80 &nbsp;/&nbsp; endpoint /ws</p>
+      </div>
+    </div>
+
+    <div class="status-wrap">
+      <div id="statusPill" class="disconnected">
+        <span class="dot"></span>
+        <span id="statusText">DISCONNECTED</span>
+      </div>
+      <span class="endpoint-label">ws://192.168.4.1/ws</span>
+    </div>
+  </header>
+
+  <!-- ── Stats + log panel ───────────────────────────────── -->
+  <div style="display:grid;grid-template-rows:auto 1fr;gap:10px;min-height:0">
+
+    <div class="stats-row">
+      <div class="stat">↑ SENT <span class="stat-val" id="sentCount">0</span></div>
+      <div class="stat">↓ RECV <span class="stat-val" id="recvCount">0</span></div>
+      <div class="stat">⏱ UPTIME <span class="stat-val" id="espUptime">—</span></div>
+      <div class="stat">👥 CLIENTS <span class="stat-val" id="espClients">—</span></div>
+    </div>
+
+    <div class="panel">
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <!-- ── Input ────────────────────────────────────────────── -->
+  <div style="display:grid;gap:10px">
+    <div class="input-row">
+      <input id="msgInput" type="text" placeholder="Type a message and press Enter or Send…"
+             disabled autocomplete="off" spellcheck="false">
+      <button id="sendBtn" disabled>Send</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+
+    <footer>
+      <span>Open this file while connected to <b style="color:var(--text)">ESP32-WebSocket-Test</b></span>
+      <div id="reconnectBar">
+        <span id="reconnectLabel">Reconnecting in <b id="reconnectSec">3</b>s</span>
+        <div class="progress-track"><div class="progress-fill" id="reconnectProgress" style="width:0%"></div></div>
+      </div>
+    </footer>
+  </div>
+
+</div>
+
+<!-- ──────────────────────────────────────────────────────────
+     JavaScript
+─────────────────────────────────────────────────────────── -->
+<script>
+'use strict';
+
+// ── Configuration ──────────────────────────────────────────
+const WS_URL            = 'ws://192.168.4.1/ws';
+const RECONNECT_DELAY   = 5000;   // ms between reconnect attempts
+const MAX_LOG_ENTRIES   = 300;
+
+// ── State ───────────────────────────────────────────────────
+let ws              = null;
+let sentCount       = 0;
+let recvCount       = 0;
+let reconnectTimer  = null;
+let reconnectTick   = null;
+let isManualClose   = false;
+
+// ── DOM refs ─────────────────────────────────────────────── 
+const logEl          = document.getElementById('log');
+const msgInput       = document.getElementById('msgInput');
+const sendBtn        = document.getElementById('sendBtn');
+const clearBtn       = document.getElementById('clearBtn');
+const statusPill     = document.getElementById('statusPill');
+const statusText     = document.getElementById('statusText');
+const sentCountEl    = document.getElementById('sentCount');
+const recvCountEl    = document.getElementById('recvCount');
+const espUptimeEl    = document.getElementById('espUptime');
+const espClientsEl   = document.getElementById('espClients');
+const reconnectBar   = document.getElementById('reconnectBar');
+const reconnectSec   = document.getElementById('reconnectSec');
+const reconnectProg  = document.getElementById('reconnectProgress');
+
+// ── Helpers ──────────────────────────────────────────────── 
+
+function timestamp() {
+  const d = new Date();
+  return [
+    String(d.getHours()).padStart(2,'0'),
+    String(d.getMinutes()).padStart(2,'0'),
+    String(d.getSeconds()).padStart(2,'0'),
+    '.' + String(d.getMilliseconds()).padStart(3,'0')
+  ].join('').replace('.', ':').replace(/(\d{2})(\d{2})(\d{2})/, '$1:$2:$3');
+}
+
+/**
+ * Attempt to pretty-print JSON with syntax highlighting.
+ * Falls back to raw text if not valid JSON.
+ */
+function formatMsg(raw) {
+  try {
+    const obj = JSON.parse(raw);
+    return syntaxHighlight(JSON.stringify(obj, null, 2));
+  } catch {
+    return escapeHtml(raw);
+  }
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function syntaxHighlight(json) {
+  json = escapeHtml(json);
+  return json.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    match => {
+      let cls = 'json-num';
+      if (/^"/.test(match)) {
+        cls = /:$/.test(match) ? 'json-key' : 'json-str';
+      } else if (/true|false/.test(match)) {
+        cls = 'json-bool';
+      }
+      return `<span class="${cls}">${match}</span>`;
+    }
+  );
+}
+
+/**
+ * Append a line to the console log.
+ * type: 'sent' | 'recv' | 'sys' | 'err'
+ */
+function log(type, message) {
+  // Trim old entries
+  while (logEl.children.length >= MAX_LOG_ENTRIES) {
+    logEl.removeChild(logEl.firstChild);
+  }
+
+  const tagLabels = { sent: 'SENT', recv: 'RECV', sys: 'SYS', err: 'ERR' };
+
+  const entry = document.createElement('div');
+  entry.className = 'entry';
+  entry.innerHTML =
+    `<span class="entry-time">${timestamp()}</span>` +
+    `<span class="entry-tag tag-${type}">${tagLabels[type]}</span>` +
+    `<span class="entry-msg ${type}">${formatMsg(message)}</span>`;
+
+  logEl.appendChild(entry);
+
+  // Auto-scroll unless user has scrolled up
+  const atBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 60;
+  if (atBottom) logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStatus(state) {
+  // state: 'connected' | 'connecting' | 'disconnected'
+  statusPill.className = state;
+  statusText.textContent = state.toUpperCase();
+
+  const isConnected = (state === 'connected');
+  msgInput.disabled = !isConnected;
+  sendBtn.disabled  = !isConnected;
+}
+
+// ── Reconnect countdown UI ───────────────────────────────── 
+
+function startReconnectCountdown(delaySec) {
+  clearReconnectUI();
+  reconnectBar.classList.add('visible');
+  let remaining = delaySec;
+
+  const update = () => {
+    reconnectSec.textContent = remaining;
+    reconnectProg.style.width = ((delaySec - remaining) / delaySec * 100) + '%';
+    if (remaining > 0) remaining--;
+  };
+
+  update();
+  reconnectTick = setInterval(update, 1000);
+}
+
+function clearReconnectUI() {
+  clearInterval(reconnectTick);
+  reconnectTick = null;
+  reconnectBar.classList.remove('visible');
+}
+
+// ── WebSocket lifecycle ──────────────────────────────────── 
+
+function connect() {
+  if (ws && (ws.readyState === WebSocket.OPEN ||
+             ws.readyState === WebSocket.CONNECTING)) return;
+
+  isManualClose = false;
+  setStatus('connecting');
+  log('sys', `Connecting to ${WS_URL} …`);
+
+  try {
+    ws = new WebSocket(WS_URL);
+  } catch (e) {
+    log('err', `WebSocket constructor error: ${e.message}`);
+    scheduleReconnect();
+    return;
+  }
+
+  ws.onopen = () => {
+    clearReconnectUI();
+    setStatus('connected');
+    log('sys', `Connected to ${WS_URL}`);
+    msgInput.focus();
+  };
+
+  ws.onmessage = (evt) => {
+    recvCount++;
+    recvCountEl.textContent = recvCount;
+    log('recv', evt.data);
+
+    // Parse status broadcasts and update stats
+    try {
+      const parsed = JSON.parse(evt.data);
+      if (parsed.event === 'status') {
+        if (parsed.uptime  !== undefined)
+          espUptimeEl.textContent  = parsed.uptime + 's';
+        if (parsed.clients !== undefined)
+          espClientsEl.textContent = parsed.clients;
+      }
+    } catch { /* not JSON or no status fields */ }
+  };
+
+  ws.onclose = (evt) => {
+    setStatus('disconnected');
+    if (!isManualClose) {
+      log('sys',
+          `Connection closed (code ${evt.code})${evt.reason ? ': ' + evt.reason : ''}. ` +
+          `Reconnecting in ${RECONNECT_DELAY / 1000}s…`);
+      scheduleReconnect();
+    } else {
+      log('sys', 'Connection closed.');
+    }
+  };
+
+  ws.onerror = () => {
+    // onerror is always followed by onclose; log once there
+    log('err', 'WebSocket error — check that the ESP32 is powered and you are connected to ESP32-WebSocket-Test');
+  };
+}
+
+function scheduleReconnect() {
+  clearTimeout(reconnectTimer);
+  startReconnectCountdown(RECONNECT_DELAY / 1000);
+  reconnectTimer = setTimeout(() => {
+    clearReconnectUI();
+    connect();
+  }, RECONNECT_DELAY);
+}
+
+function sendMessage() {
+  const msg = msgInput.value.trim();
+  if (!msg) return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    log('err', 'Not connected — cannot send');
+    return;
+  }
+  ws.send(msg);
+  sentCount++;
+  sentCountEl.textContent = sentCount;
+  log('sent', msg);
+  msgInput.value = '';
+  msgInput.focus();
+}
+
+// ── Event bindings ───────────────────────────────────────── 
+
+sendBtn.addEventListener('click', sendMessage);
+
+msgInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+clearBtn.addEventListener('click', () => {
+  logEl.innerHTML = '';
+  log('sys', 'Log cleared');
+});
+
+// Kick off initial connection on load
+log('sys', 'ESP32 WebSocket Console initialised');
+log('sys', `Target: ${WS_URL}`);
+log('sys', 'Make sure you are connected to Wi-Fi: ESP32-WebSocket-Test');
+connect();
+</script>
+
+</body>
+</html>
