@@ -1,0 +1,133 @@
+[
+    {
+        "type": "ping"
+    },
+    {
+        "type": "ping",
+        "status": true
+    },
+    {
+        "type": "sensor_data"
+    },
+    {
+        "type": "welcome",
+        "message": "Connected to ESP32 Sensor System",
+        "client_id": 1,
+        "timestamp": 46629
+    },
+    {
+        "type": "status",
+        "message": "Client connected",
+        "timestamp": 46632,
+        "connected_clients": 1
+    },
+    {
+        "type": "sensor_broadcast",
+        "timestamp": 50047,
+        "bmp180": {
+            "temperature": 26.2,
+            "pressure": 893.92,
+            "valid": true,
+            "errors": 0
+        },
+        "bh1750": {
+            "illuminance": 120.8333,
+            "valid": true,
+            "errors": 0
+        },
+        "mpu6050": {
+            "acceleration": {
+                "x": 0.431104,
+                "y": -8.938213,
+                "z": -6.844966
+            },
+            "gyroscope": {
+                "x": 0.320611,
+                "y": -4.145038,
+                "z": -3.328244
+            },
+            "temperature": -5565120,
+            "valid": true,
+            "errors": 0
+        },
+        "dht22": {
+            "temperature": 26.3,
+            "humidity": 47.5,
+            "valid": true,
+            "errors": 0
+        },
+        "soil_moisture": {
+            "raw": 0,
+            "percentage": 0,
+            "valid": true,
+            "errors": 0
+        },
+        "rain_gauge": {
+            "tips": 0,
+            "total_rainfall": 0,
+            "valid": true
+        }
+    },
+    {
+        "type": "pong",
+        "original_type": "ping",
+        "timestamp": 11048,
+        "message": "Pong from ESP32"
+    },
+    {
+        "type": "sensor_data",
+        "original_type": "sensor_data",
+        "timestamp": 21623,
+        "bmp180": {
+            "temperature": 26.2,
+            "pressure": 893.83,
+            "valid": true
+        },
+        "bh1750": {
+            "illuminance": 130,
+            "valid": true
+        },
+        "dht22": {
+            "temperature": 26.3,
+            "humidity": 47.4,
+            "valid": true
+        },
+        "soil_moisture": {
+            "raw": 0,
+            "percentage": 0,
+            "valid": true
+        }
+    },
+    {
+        "type": "echo",
+        "original_type": "echo",
+        "timestamp": 151774,
+        "message": "Hello ESP32!"
+    },
+    {
+        "type": "system_info",
+        "original_type": "system_info",
+        "timestamp": 180499,
+        "uptime_ms": 180499,
+        "free_heap": 221180,
+        "connected_clients": 1
+    },
+    {
+        "type": "echo",
+        "original_type": "echo",
+        "timestamp": 243002,
+        "message": "hi"
+    },
+    {
+        "type": "ack",
+        "original_type": "sensor_control",
+        "timestamp": 288673,
+        "message": "BMP180 disabled"
+    },
+    {
+        "type": "sensor_control",
+        "sensor": "BMP180",
+        "action": "disable",
+        "timestamp": 1779431824255
+    }
+]
