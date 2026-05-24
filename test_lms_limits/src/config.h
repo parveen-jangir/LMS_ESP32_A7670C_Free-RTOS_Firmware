@@ -54,4 +54,7 @@
 #define DHT_TYPE                  DHT22   // DHT 22 (AM2302)
 #define DHT_READING_DELAY_MS      2000    // Minimum delay between DHT reads
 
+#define SOLAR_VOLTAGE_CHANNEL   2
+#define BATTERY_VOLTAGE_CHANNEL 0
+
 #endif // CONFIG_H

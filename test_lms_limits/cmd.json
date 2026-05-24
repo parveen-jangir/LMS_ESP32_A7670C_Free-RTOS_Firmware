@@ -1,5 +1,15 @@
 [
     {
+        "sensors": [
+            "BMP180",
+            "BH1750",
+            "MPU6050",
+            "DHT22",
+            "Soil_Moisture",
+            "Rain_Gauge"
+        ]
+    },
+    {
         "type": "ping"
     },
     {
@@ -7,33 +17,32 @@
         "status": true
     },
     {
-        "type": "sensor_data"
+        "type": "sensor_state",
+        "sensor": "BMP180",
+        "state": true
     },
     {
-        "type": "welcome",
-        "message": "Connected to ESP32 Sensor System",
-        "client_id": 1,
-        "timestamp": 46629
+        "type": "sensor_state",
+        "sensor": "BMP180",
+        "state": false,
+        "status": true,
+        "msg": "BMP180 disabled"
     },
     {
-        "type": "status",
-        "message": "Client connected",
-        "timestamp": 46632,
-        "connected_clients": 1
+        "type": "sensor_brodcast"
     },
     {
         "type": "sensor_broadcast",
-        "timestamp": 50047,
         "bmp180": {
             "temperature": 26.2,
             "pressure": 893.92,
-            "valid": true,
-            "errors": 0
+            "state": false,
+            "msg": "BMP180 disabled"
         },
         "bh1750": {
             "illuminance": 120.8333,
-            "valid": true,
-            "errors": 0
+            "state": true,
+            "msg": "BH1750 enabled"
         },
         "mpu6050": {
             "acceleration": {
@@ -47,87 +56,75 @@
                 "z": -3.328244
             },
             "temperature": -5565120,
-            "valid": true,
-            "errors": 0
+            "state": true,
+            "msg": "MPU6050 enabled"
         },
         "dht22": {
             "temperature": 26.3,
             "humidity": 47.5,
-            "valid": true,
-            "errors": 0
+            "state": true,
+            "msg": "DHT22 enabled"
         },
         "soil_moisture": {
             "raw": 0,
             "percentage": 0,
-            "valid": true,
-            "errors": 0
+            "state": true,
+            "msg": "Soil Moisture enabled"
         },
         "rain_gauge": {
             "tips": 0,
             "total_rainfall": 0,
-            "valid": true
-        }
+            "state": true,
+            "msg": "Rain Gauge enabled"
+        },
+        "status": true,
+        "msg": "Sensor data broadcast"
     },
     {
-        "type": "pong",
-        "original_type": "ping",
-        "timestamp": 11048,
-        "message": "Pong from ESP32"
-    },
-    {
-        "type": "sensor_data",
-        "original_type": "sensor_data",
-        "timestamp": 21623,
-        "bmp180": {
-            "temperature": 26.2,
-            "pressure": 893.83,
-            "valid": true
-        },
-        "bh1750": {
-            "illuminance": 130,
-            "valid": true
-        },
-        "dht22": {
-            "temperature": 26.3,
-            "humidity": 47.4,
-            "valid": true
-        },
-        "soil_moisture": {
-            "raw": 0,
-            "percentage": 0,
-            "valid": true
-        }
-    },
-    {
-        "type": "echo",
-        "original_type": "echo",
-        "timestamp": 151774,
-        "message": "Hello ESP32!"
+        "type": "system_info"
     },
     {
         "type": "system_info",
         "original_type": "system_info",
-        "timestamp": 180499,
         "uptime_ms": 180499,
         "free_heap": 221180,
-        "connected_clients": 1
+        "connected_clients": 1,
+        "status": true,
+        "msg": "System information retrieved"
     },
     {
-        "type": "echo",
-        "original_type": "echo",
-        "timestamp": 243002,
-        "message": "hi"
+        "type": "battery_status"
     },
     {
-        "type": "ack",
-        "original_type": "sensor_control",
-        "timestamp": 288673,
-        "message": "BMP180 disabled"
+        "type": "battery_status",
+        "charging": false,
+        "volage": 3.7,
+        "cuttent": 0.5,
+        "power_mw": 1.85,
+        "status": true,
+        "msg": "Battery status retrieved"
     },
     {
-        "type": "sensor_control",
-        "sensor": "BMP180",
-        "action": "disable",
-        "timestamp": 1779431824255
+        "type": "solar_status"
+    },
+    {
+        "type": "solar_status",
+        "volage": 5.0,
+        "current": 0.2,
+        "power_mw": 1.0,
+        "status": true,
+        "msg": "Solar panel status retrieved"
+    },
+    {
+        "type": "system_power"
+    },
+    {
+        "type": "system_power",
+        "source": "battery",
+        "volage": 3.7,
+        "current": 0.5,
+        "power_mw": 1.85,
+        "status": true,
+        "msg": "System power status retrieved"
     }
 ]
