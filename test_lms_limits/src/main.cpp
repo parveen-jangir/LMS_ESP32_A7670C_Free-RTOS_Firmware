@@ -1,42 +1,104 @@
-#include "power_handler/power_handler.h"
+/*
+ * GSM_OTA — Example sketch for ESP32-S3 + A7670C
+ *
+ * Wiring:
+ *   ESP32-S3 RX  (GPIO16) --> A7670C TX
+ *   ESP32-S3 TX  (GPIO17) --> A7670C RX
+ *   GND <--> GND
+ *
+ * Serial Monitor:
+ *   Type  "update"  → start OTA
+ *   Anything else   → forwarded to GSM module (passthrough)
+ */
+#include <Arduino.h>
+#include "GSM_OTA/GSM_OTA.h"
 
-powerMonitor monitor;
+// ─── Config ───────────────────────────────────────────────────────────────────
+#define GSM_RX_PIN   16
+#define GSM_TX_PIN   17
+#define GSM_BAUD     115200
 
-void setup() {
-    Serial.begin(115200);
-    if (!monitor.begin()) {
-        Serial.println("INA3221 init failed!");
-        while(1);
-    }
+// ⚠️  Use raw.githubusercontent.com — NOT github.com/…/raw/refs/…
+//     The github.com URL redirects (302) and A7670C cannot follow redirects.
+const char* OTA_URL = "https://raw.githubusercontent.com/parveen-jangir/mqtt_bin_file/main/test_esp_ota.bin";
+// const char* OTA_URL = "https://raw.githubusercontent.com/parveen-jangir/mqtt_bin_file/refs/heads/main/esp32_s3_test_ota.bin";
+const char* APN     = "airtelgprs.com";
+
+HardwareSerial gsm(2);  // Use UART2 for GSM
+
+// ─── Library instance ─────────────────────────────────────────────────────────
+GSM_OTA ota(gsm, Serial);
+
+// ─── Optional callbacks ───────────────────────────────────────────────────────
+void onProgress(int percent, int written, int total)
+{
+    // Draw a simple progress bar on Serial
+    Serial.printf("  [");
+    int filled = percent / 5;                // 20 chars wide
+    for (int i = 0; i < 20; i++) Serial.print(i < filled ? '=' : ' ');
+    Serial.printf("] %d%%  (%d/%d bytes)\n", percent, written, total);
 }
 
-void loop() {
-    monitor.update();     // Call frequently (every 100-500ms is good)
+void onLog(const char* msg)
+{
+    // All library logs come here too (already printed by the library itself
+    // if debugEnabled=true, so you can use this to forward to MQTT / SD card)
+    (void)msg;
+}
 
-    static unsigned long lastPrint = 0;
-    if (millis() - lastPrint >= 1000) {
-        lastPrint = millis();
+// ─── Setup ────────────────────────────────────────────────────────────────────
+void setup()
+{
+    Serial.begin(115200);
+    delay(1000);
 
-        Serial.printf("Solar: %.2f W | Battery: %.2f W | Load: %.2f W | Charging: %.2f W\n",
-            monitor.getSolarPower()/1000.0,
-            monitor.getBatteryPower()/1000.0,
-            monitor.getSystemLoadPower()/1000.0,
-            monitor.getChargingPower()/1000.0);
+    // Init GSM UART
+    ota.begin(GSM_BAUD, GSM_RX_PIN, GSM_TX_PIN);
 
-        Serial.printf("Solar Energy: %.3f Wh | Battery Out: %.3f Wh\n\n",
-            monitor.getSolarEnergyWh(),
-            monitor.getBatteryDischargedWh());
+    // Configure
+    ota.setAPN(APN);
+    ota.setChunkSize(512);           // optional – 512 is default
+    ota.setDebugEnabled(true);       // print logs to Serial
 
-        Serial.println("Power Flow State: " + String(
-            monitor.getPowerFlowState() == SOLAR_ONLY ? "SOLAR_ONLY" :
-            monitor.getPowerFlowState() == BATTERY_DISCHARGING ? "BATTERY_DISCHARGING" :
-            monitor.getPowerFlowState() == HYBRID ? "HYBRID" : "IDLE"
-        ));
+    // Register callbacks (optional)
+    ota.onProgress(onProgress);
+    ota.onLog(onLog);
 
-        Serial.println("Battery Voltage: " + String(monitor.getBatteryVoltage()) + " V");
-        Serial.println("Battery Current: " + String(monitor.getBatteryCurrent()) + " mA");
-        Serial.println("Solar Voltage: " + String(monitor.getSolarVoltage()) + " V");
-        Serial.println("Solar Current: " + String(monitor.getSolarCurrent()) + " mA");
-        Serial.println();
+    Serial.println("================================");
+    Serial.println(" ESP32-S3 GSM-OTA Example");
+    Serial.println(" Type 'update' → start OTA");
+    Serial.println(" Anything else → GSM passthrough");
+    Serial.println("================================");
+}
+
+// ─── Loop ─────────────────────────────────────────────────────────────────────
+void loop()
+{
+    // ── Serial → GSM passthrough / OTA trigger ────────────────────────────────
+    if (Serial.available()) {
+        String input = Serial.readStringUntil('\n');
+        input.trim();
+
+        if (input.equalsIgnoreCase("update")) {
+            Serial.println("\n>> OTA triggered");
+            OTAResult result = ota.performOTA(OTA_URL);
+
+            if (result == OTA_SUCCESS) {
+                Serial.println(">> OTA done! Rebooting in 3 s...");
+                delay(3000);
+                esp_restart();
+            } else {
+                Serial.printf(">> OTA FAILED: %s (code %d)\n",
+                              GSM_OTA::resultToString(result), (int)result);
+            }
+
+        } else {
+            gsm.println(input);   // forward to GSM
+        }
+    }
+
+    // ── GSM → Serial passthrough ──────────────────────────────────────────────
+    while (gsm.available()) {
+        Serial.write(gsm.read());
     }
 }

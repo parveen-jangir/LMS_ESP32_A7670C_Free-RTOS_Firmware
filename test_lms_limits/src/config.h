@@ -56,5 +56,7 @@
 
 #define SOLAR_VOLTAGE_CHANNEL   2
 #define BATTERY_VOLTAGE_CHANNEL 0
+#define ENERGY_INTERVAL_MS        1000
+#define SHUNT_RESISTANCE         0.05f   // ohms
 
 #endif // CONFIG_H

@@ -20,13 +20,10 @@ private:
     float batteryDischargedWh = 0.0;
 
     unsigned long lastEnergyUpdate = 0;
-    const unsigned long ENERGY_INTERVAL = 1000; // 1 second
 
     // Previous power values for integration
     float prevSolarPower = 0.0;
     float prevBatteryPower = 0.0;
-
-    const float SHUNT_RESISTANCE = 0.05; // ohms
 
 public:
     powerMonitor(uint8_t addr = 0x40);

@@ -78,7 +78,7 @@ void powerMonitor::update() {
     unsigned long now = millis();
 
     // Update energy every 1 second
-    if (now - lastEnergyUpdate >= ENERGY_INTERVAL) {
+    if (now - lastEnergyUpdate >= ENERGY_INTERVAL_MS) {
         float solarP = getSolarPower();           // mW
         float batteryP = getBatteryPower();       // mW  (positive = discharged)
 
