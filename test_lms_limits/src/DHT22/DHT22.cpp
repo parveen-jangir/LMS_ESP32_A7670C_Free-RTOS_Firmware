@@ -7,7 +7,7 @@ DHT22Sensor::DHT22Sensor(uint8_t sensorPin)
     
     // Create DHT_Unified instance
     dht = new DHT_Unified(pin, DHT_TYPE);
-    lastReading = {0, 0, 0, false, 0};
+    lastReading = {0.0F, 0.0F, false, 0};
 }
 
 DHT22Sensor::~DHT22Sensor() {
@@ -31,19 +31,19 @@ bool DHT22Sensor::initialize() {
     
     if (DEBUG_ENABLED) {
         Serial.println("[DHT22] Sensor Information:");
-        Serial.printf("[DHT22]   Name: %s\n", sensor.name);
-        Serial.printf("[DHT22]   Driver Ver: %d\n", sensor.version);
-        Serial.printf("[DHT22]   Unique ID: %lu\n", sensor.sensor_id);
-        Serial.printf("[DHT22]   Max Value: %.2f\n", sensor.max_value);
-        Serial.printf("[DHT22]   Min Value: %.2f\n", sensor.min_value);
-        Serial.printf("[DHT22]   Resolution: %.2f\n", sensor.resolution);
+        Serial.printf("[DHT22]   Name: %s\n"), sensor.name;
+        Serial.printf("[DHT22]   Driver Ver: %d\n"), sensor.version;
+        Serial.printf("[DHT22]   Unique ID: %lu\n"), sensor.sensor_id;
+        Serial.printf("[DHT22]   Max Value: %.2f\n"), sensor.max_value;
+        Serial.printf("[DHT22]   Min Value: %.2f\n"), sensor.min_value;
+        Serial.printf("[DHT22]   Resolution: %.2f\n"), sensor.resolution;
         Serial.println("[DHT22]   Min Delay: 2000000 µs (2 seconds)");
     }
     
     isInitialized = true;
     lastReading.isValid = true;
     
-    if (DEBUG_ENABLED) Serial.println("[DHT22] Initialized successfully");
+    if (DEBUG_ENABLED) Serial.println(F("[DHT22] Initialized successfully"));
     return true;
 }
 
@@ -62,7 +62,6 @@ bool DHT22Sensor::readSensor() {
     }
     
     lastReadTime = currentTime;
-    lastReading.timestamp = currentTime;
     
     try {
         // Read temperature

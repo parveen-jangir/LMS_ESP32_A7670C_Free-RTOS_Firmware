@@ -8,8 +8,8 @@ SensorManager::SensorManager()
     
     // Create sensor instances
     bmp180 = new BMP180Sensor();
-    bh1750 = new BH1750Sensor(&Wire);
-    mpu6050 = new MPU6050Sensor(&Wire);
+    bh1750 = new BH1750Sensor();
+    mpu6050 = new IMU6050Sensor(&Wire);
     dht22 = new DHT22Sensor(DHT22_PIN);
     soilMoisture = new SoilMoistureSensor(SOIL_MOISTURE_PIN);
     rainGauge = new RainGaugeSensor(RAIN_GAUGE_PIN);
@@ -30,8 +30,8 @@ SensorManager::SensorManager()
     calibration.mpu6050TempOffset = 0.0;
     calibration.dht22TempOffset = 0.0;
     calibration.dht22HumidityOffset = 0.0;
-    calibration.soilMoistureOffsetMin = 0.0;
-    calibration.soilMoistureOffsetMax = 4095.0;
+    calibration.soilMoistureOffsetMin = 1167.0;
+    calibration.soilMoistureOffsetMax = 2582.0;
     calibration.rainGaugeTipVolume = 0.2794;
 }
 

@@ -10,14 +10,12 @@
 struct BMP180Data {
     float temperature;      // Celsius
     float pressure;         // hPa
-    uint32_t timestamp;
     bool isValid;
     uint8_t errorCount;
 };
 
 struct BH1750Data {
     float illuminance;      // Lux
-    uint32_t timestamp;
     bool isValid;
     uint8_t errorCount;
 };
@@ -26,7 +24,7 @@ struct MPU6050Data {
     float accelX, accelY, accelZ;  // m/s²
     float gyroX, gyroY, gyroZ;     // deg/s
     float temperature;              // Celsius
-    uint32_t timestamp;
+    uint16_t MotionCount;
     bool isValid;
     uint8_t errorCount;
 };
@@ -34,24 +32,21 @@ struct MPU6050Data {
 struct DHT22Data {
     float temperature;      // Celsius
     float humidity;         // %RH
-    uint32_t timestamp;
     bool isValid;
     uint8_t errorCount;
 };
 
 struct SoilMoistureData {
-    uint16_t rawValue;      // 0-4095 (ADC)
+    uint32_t rawValue;      // 0-4095 (ADC)
     float percentage;       // 0-100%
-    uint32_t timestamp;
     bool isValid;
     uint8_t errorCount;
 };
 
 struct RainGaugeData {
-    uint32_t tipCount;      // Total number of tips
-    float totalRainfall;    // mm (0.2794mm per tip, configurable)
+    volatile uint32_t tipCount;      // Total number of tips
+    volatile float totalRainfall;    // mm (0.2794mm per tip, configurable)
     uint32_t lastTipTime;   // Timestamp of last tip
-    uint32_t timestamp;
     bool isValid;
 };
 

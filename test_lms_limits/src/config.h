@@ -8,9 +8,10 @@
 #define I2C_TIMEOUT_MS    1000    // I2C timeout in ms
 
 // ==================== GPIO Pin Configuration ====================
-#define DHT22_PIN         32
-#define SOIL_MOISTURE_PIN 27
-#define RAIN_GAUGE_PIN    33
+#define DHT22_PIN           32
+#define SOIL_MOISTURE_PIN   27
+#define RAIN_GAUGE_PIN      33
+#define MPU_INTERRUPT_PIN   15
 
 // ==================== I2C Sensor Addresses ====================
 #define BMP180_ADDRESS    0x77
@@ -36,7 +37,7 @@
 #define SENSOR_TASK_CORE          1    // Core 1 for sensor tasks
 
 // ==================== Calibration Defaults ====================
-#define BH1750_DEFAULT_OFFSET      0.0
+#define BH1750_DEFAULT_OFFSET           0.0
 #define BMP180_DEFAULT_TEMP_OFFSET      0.0
 
 // ==================== Error Handling ====================
@@ -54,9 +55,9 @@
 #define DHT_TYPE                  DHT22   // DHT 22 (AM2302)
 #define DHT_READING_DELAY_MS      2000    // Minimum delay between DHT reads
 
-#define SOLAR_VOLTAGE_CHANNEL   2
-#define BATTERY_VOLTAGE_CHANNEL 0
+#define SOLAR_VOLTAGE_CHANNEL     2
+#define BATTERY_VOLTAGE_CHANNEL   0
 #define ENERGY_INTERVAL_MS        1000
-#define SHUNT_RESISTANCE         0.05f   // ohms
+#define SHUNT_RESISTANCE          0.05f   // ohms
 
 #endif // CONFIG_H

@@ -20,7 +20,7 @@ void IRAM_ATTR RainGaugeSensor::isrHandler() {
 RainGaugeSensor::RainGaugeSensor(uint8_t sensorPin)
     : pin(sensorPin), isInitialized(false), tipVolume(0.2794),
       lastTipDebounceTime(0) {
-    lastReading = {0, 0, 0, 0, true};
+    lastReading = {0, 0, 0, true};
     rainGaugeInstance = this;
 }
 
@@ -32,16 +32,14 @@ bool RainGaugeSensor::initialize() {
     
     isInitialized = true;
     lastReading.isValid = true;
-    lastReading.timestamp = millis();
     
-    if (DEBUG_ENABLED) Serial.println("[RainGauge] Initialized successfully");
+    if (DEBUG_ENABLED) Serial.println(F("[RainGauge] Initialized successfully"));
     return true;
 }
 
 bool RainGaugeSensor::readSensor() {
     if (!isInitialized) return false;
     
-    lastReading.timestamp = millis();
     lastReading.isValid = true;
     
     return true;
@@ -75,7 +73,6 @@ float RainGaugeSensor::getTipVolume() const {
 void RainGaugeSensor::resetTipCount() {
     lastReading.tipCount = 0;
     lastReading.totalRainfall = 0;
-    lastReading.timestamp = millis();
 }
 
 bool RainGaugeSensor::isValid() const {

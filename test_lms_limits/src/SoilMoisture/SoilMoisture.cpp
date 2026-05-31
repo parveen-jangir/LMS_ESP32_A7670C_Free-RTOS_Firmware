@@ -2,8 +2,8 @@
 
 SoilMoistureSensor::SoilMoistureSensor(uint8_t sensorPin)
     : pin(sensorPin), isInitialized(false),
-      calibrationOffsetMin(0), calibrationOffsetMax(4095) {
-    lastReading = {0, 0, 0, false, 0};
+      calibrationOffsetMin(1167), calibrationOffsetMax(2582) {
+    lastReading = {0, 0.0F, false, 0};
 }
 
 bool SoilMoistureSensor::initialize() {
@@ -17,25 +17,24 @@ bool SoilMoistureSensor::initialize() {
     isInitialized = true;
     lastReading.isValid = true;
     
-    if (DEBUG_ENABLED) Serial.println("[SoilMoisture] Initialized successfully");
+    if (DEBUG_ENABLED) Serial.println(F("[SoilMoisture] Initialized successfully"));
     return true;
 }
 
 bool SoilMoistureSensor::readSensor() {
     if (!isInitialized) return false;
     
-    lastReading.timestamp = millis();
     
     // Read ADC value
-    lastReading.rawValue = analogRead(pin);
+    lastReading.rawValue = analogReadMilliVolts(pin);
     
     // Convert to percentage (0-100%)
     // Clamp between min and max calibration values
-    uint16_t clamped = constrain(lastReading.rawValue, 
-                                  (uint16_t)calibrationOffsetMin, 
-                                  (uint16_t)calibrationOffsetMax);
+    uint32_t clamped = constrain(lastReading.rawValue, 
+                                  0, 
+                                  3300);
     
-    lastReading.percentage = 100.0f * (clamped - calibrationOffsetMin) / 
+    lastReading.percentage = 100.0f * (calibrationOffsetMax - clamped) / 
                              (calibrationOffsetMax - calibrationOffsetMin);
     
     lastReading.isValid = true;

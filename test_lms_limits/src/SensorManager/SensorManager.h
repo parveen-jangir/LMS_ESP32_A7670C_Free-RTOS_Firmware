@@ -10,7 +10,7 @@
 #include "SensorData.h"
 #include "BMP180/BMP180.h"
 #include "BH1750/BH1750.h"
-#include "MPU6050/MPU6050.h"
+#include "IMU6050/IMU6050.h"
 #include "DHT22/DHT22.h"
 #include "SoilMoisture/SoilMoisture.h"
 #include "RainGauge/RainGauge.h"
@@ -20,7 +20,7 @@ private:
     // Sensor instances
     BMP180Sensor* bmp180;
     BH1750Sensor* bh1750;
-    MPU6050Sensor* mpu6050;
+    IMU6050Sensor* mpu6050;
     DHT22Sensor* dht22;
     SoilMoistureSensor* soilMoisture;
     RainGaugeSensor* rainGauge;
