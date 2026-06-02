@@ -1,11 +1,232 @@
+# A7670C Arduino Library for ESP32
 
-This directory is intended for PlatformIO Test Runner and project tests.
+A clean, full-featured C++ Arduino library for the **SIM A7670C LTE module** connected to an **ESP32** over Hardware UART.
 
-Unit Testing is a software testing method by which individual units of
-source code, sets of one or more MCU program modules together with associated
-control data, usage procedures, and operating procedures, are tested to
-determine whether they are fit for use. Unit testing finds problems early
-in the development cycle.
+---
 
-More information about PlatformIO Unit Testing:
-- https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+## Features
+
+| Feature | AT Commands Used |
+|---|---|
+| Power on / off / reset via PWRKEY | GPIO pulse |
+| Mobile data (PDP context) ON / OFF | `AT+CGDCONT`, `AT+CGACT` |
+| HTTP GET / POST / PUT / DELETE | `AT+HTTPINIT`, `AT+HTTPACTION`, `AT+HTTPREAD` |
+| MQTT connect / publish / subscribe | `AT+SMCONF`, `AT+SMCONN`, `AT+SMPUB`, `AT+SMSUB` |
+| Send SMS | `AT+CMGS` |
+| Receive SMS (callback on new message) | `+CMTI` URC |
+| Read / list / delete SMS | `AT+CMGR`, `AT+CMGL`, `AT+CMGD` |
+| Dial outgoing voice call | `ATD` |
+| Answer / hang-up call | `ATA`, `ATH` |
+| Incoming call detection (callback) | `RING`, `+CLIP` URC |
+| Supply voltage (mV) | `AT+CBC` |
+| Signal strength (CSQ / RSSI / BER) | `AT+CSQ` |
+| Network registration status | `AT+CREG` |
+| IMEI / ICCID / Operator / Firmware | `AT+CGSN`, `AT+CCID`, `AT+COPS`, `AT+CGMR` |
+| Raw AT command access | `sendAT()` |
+
+---
+
+## Wiring
+
+```
+ESP32 GPIO16 (RX1)  ──────────►  A7670C TXD
+ESP32 GPIO17 (TX1)  ◄──────────  A7670C RXD
+ESP32 GPIO4         ──────────►  A7670C PWRKEY
+GND                 ───────────  GND (common)
+3.3 V / 4.2 V supply via dedicated LDO (do NOT power from ESP32 3V3 pin)
+```
+
+> **Note:** The A7670C draws up to 2 A peak during TX bursts. Use a dedicated supply capable of at least 2 A.
+
+---
+
+## Installation
+
+1. Download or clone this repository.
+2. Copy the `A7670C` folder into your Arduino `libraries/` directory.
+3. Restart the Arduino IDE.
+4. Open `File → Examples → A7670C → FullDemo`.
+
+---
+
+## Quick Start
+
+```cpp
+#include "A7670C.h"
+
+// Serial1: RX=GPIO16, TX=GPIO17, PWRKEY=GPIO4
+A7670C gsm(Serial1, 16, 17, 4);
+
+void setup() {
+    Serial.begin(115200);
+    gsm.setDebug(Serial);
+    gsm.setDebugEnabled(true);
+    gsm.begin();
+}
+
+void loop() {
+    gsm.loop();   // Required – processes all incoming URCs
+}
+```
+
+---
+
+## API Reference
+
+### Lifecycle
+
+```cpp
+bool begin();               // Init UART, power on, wait ready
+void end();                 // Graceful power off
+void loop();                // Call every iteration of Arduino loop()
+bool powerOn();             // Assert PWRKEY pulse
+bool powerOff();            // AT+CPOWD=1
+bool reset();               // PWRKEY reset pulse
+bool isAlive();             // AT ping
+bool waitReady(ms);         // Block until module responds
+```
+
+### Module Info
+
+```cpp
+String    getIMEI();
+String    getICCID();
+String    getOperator();
+String    getFirmwareVersion();
+RegStatus getNetworkStatus();  // NOT_REGISTERED, REGISTERED_HOME, ROAMING, etc.
+```
+
+### Signal & Voltage
+
+```cpp
+SignalInfo info = gsm.getSignalStrength();
+// info.csq   – Raw CSQ (0–31, 99=unknown)
+// info.rssi  – dBm (-113 to -51)
+// info.ber   – Bit error rate
+
+int mv = gsm.getVoltage_mV();   // e.g. 4150 = 4.15 V
+```
+
+### Internet ON / OFF
+
+```cpp
+gsm.enableInternet("airtelgprs.com");   // Pass your carrier APN
+gsm.disableInternet();
+bool up = gsm.isInternetEnabled();
+```
+
+### HTTP REST API
+
+```cpp
+// Simple GET
+HttpResponse r = gsm.httpGet("http://api.example.com/data");
+Serial.println(r.statusCode);   // 200
+Serial.println(r.body);
+
+// POST with JSON
+HttpResponse r = gsm.httpPost(
+    "https://api.example.com/event",
+    "{\"temp\":23.5}",
+    "application/json"
+);
+
+// Full control
+HttpResponse resp;
+gsm.httpRequest(HttpMethod::PUT, url, body, contentType, resp);
+```
+
+### MQTT
+
+```cpp
+// Configure once
+gsm.mqttConfigure("myClientId", "broker.hivemq.com", 1883, "user", "pass");
+
+// Connect
+gsm.mqttConnect();
+
+// Subscribe
+gsm.mqttSubscribe("sensors/cmd", 0);
+
+// Publish
+gsm.mqttPublish("sensors/data", "{\"val\":42}", 0, false);
+
+// Receive – register callback before connect
+gsm.onMqttMessage([](const String& topic, const String& payload) {
+    Serial.println(topic + " → " + payload);
+});
+
+// Disconnect
+gsm.mqttDisconnect();
+```
+
+### SMS
+
+```cpp
+// Send
+gsm.smsSend("+919876543210", "Hello from ESP32!");
+
+// Read one
+SmsMessage msg = gsm.smsRead(1);
+Serial.println(msg.sender + ": " + msg.text);
+
+// List all
+SmsMessage msgs[10];
+int n = gsm.smsList(msgs, 10, "ALL");
+
+// Delete
+gsm.smsDelete(1);        // delete index 1
+gsm.smsDelete(1, 4);     // delete all
+
+// Callback on new SMS
+gsm.onSms([](SmsMessage msg) {
+    Serial.println("New SMS from " + msg.sender);
+});
+```
+
+### Voice Calls
+
+```cpp
+// Outgoing
+gsm.callDial("+919876543210");
+delay(8000);
+gsm.callHangUp();
+
+// Incoming – register callback
+gsm.onRing([](const String& number) {
+    Serial.println("Ring from " + number);
+    gsm.callAnswer();
+    delay(5000);
+    gsm.callHangUp();
+});
+
+// Check active call
+bool active = gsm.callIsActive();
+```
+
+### Raw AT Access
+
+```cpp
+String response = gsm.sendAT("AT+CPSI?", "OK", 5000);
+if (gsm.lastOK()) {
+    Serial.println(response);
+}
+```
+
+---
+
+## Configuration Macros (`A7670C.h`)
+
+| Macro | Default | Description |
+|---|---|---|
+| `A7670C_DEFAULT_BAUD` | 115200 | UART baud rate |
+| `A7670C_CMD_TIMEOUT_MS` | 5000 | Default AT command timeout |
+| `A7670C_HTTP_TIMEOUT_MS` | 30000 | HTTP request timeout |
+| `A7670C_MQTT_TIMEOUT_MS` | 10000 | MQTT connect timeout |
+| `A7670C_RX_BUFFER_SIZE` | 2048 | Internal RX buffer |
+| `A7670C_MAX_PAYLOAD_LEN` | 512 | Max HTTP body read size |
+
+---
+
+## License
+
+MIT License – free to use, modify, and distribute.

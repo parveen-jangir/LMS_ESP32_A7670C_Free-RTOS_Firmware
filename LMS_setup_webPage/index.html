@@ -1,740 +1,949 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESP32 WebSocket Console</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Sensor WebSocket Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-<style>
-  /* ── Design tokens ───────────────────────────────────────── */
-  :root {
-    --bg:          #0d0f0e;
-    --surface:     #141716;
-    --surface2:    #1c1f1d;
-    --border:      #2a2e2c;
-    --border-hi:   #3d4340;
-    --accent:      #00e5a0;
-    --accent-dim:  #00b07c;
-    --accent-glow: rgba(0,229,160,.18);
-    --warn:        #ffb800;
-    --danger:      #ff4d4d;
-    --text:        #d4dbd8;
-    --text-dim:    #7a8884;
-    --text-muted:  #4a5250;
-    --sent-color:  #6ab4ff;
-    --recv-color:  #00e5a0;
-    --sys-color:   #ffb800;
-    --font-mono:   'IBM Plex Mono', monospace;
-    --font-sans:   'IBM Plex Sans', sans-serif;
-    --radius:      4px;
-  }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
 
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 14px;
-    line-height: 1.5;
-    overflow: hidden;
-  }
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
 
-  /* ── Scanline overlay ───────────────────────────────────── */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,.07) 2px,
-      rgba(0,0,0,.07) 4px
-    );
-    pointer-events: none;
-    z-index: 999;
-  }
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 25px;
+            overflow: hidden;
+        }
 
-  /* ── Layout ─────────────────────────────────────────────── */
-  .shell {
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    height: 100vh;
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 20px 24px;
-    gap: 16px;
-  }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
 
-  /* ── Header ─────────────────────────────────────────────── */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 14px;
-  }
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ff4444;
+            animation: pulse-off 1s infinite;
+        }
 
-  .brand-icon {
-    width: 36px; height: 36px;
-    border: 1.5px solid var(--accent);
-    border-radius: var(--radius);
-    display: grid;
-    place-items: center;
-    box-shadow: 0 0 12px var(--accent-glow), inset 0 0 8px var(--accent-glow);
-  }
+        .status-indicator.connected {
+            background-color: #44ff44;
+            animation: pulse-on 1s infinite;
+        }
 
-  .brand-icon svg { display: block; }
+        @keyframes pulse-on {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
 
-  .brand-text h1 {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
+        @keyframes pulse-off {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.1; }
+        }
 
-  .brand-text p {
-    font-size: 11px;
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-  }
+        .connection-status {
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ff4444;
+        }
 
-  /* ── Status pill ─────────────────────────────────────────── */
-  .status-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-  }
+        .connection-status.connected {
+            background-color: #e8f5e9;
+            border-left-color: #44ff44;
+        }
 
-  #statusPill {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 5px 12px;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    transition: border-color .3s, background .3s;
-  }
+        .connection-status-text {
+            font-size: 14px;
+            color: #666;
+        }
 
-  #statusPill.connected {
-    border-color: var(--accent-dim);
-    background: rgba(0,229,160,.06);
-    color: var(--accent);
-  }
+        .connection-status-text strong {
+            color: #333;
+        }
 
-  #statusPill.connecting {
-    border-color: var(--warn);
-    background: rgba(255,184,0,.06);
-    color: var(--warn);
-  }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
 
-  #statusPill.disconnected {
-    border-color: var(--danger);
-    background: rgba(255,77,77,.06);
-    color: var(--danger);
-  }
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
 
-  .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: currentColor;
-    flex-shrink: 0;
-  }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
 
-  #statusPill.connected   .dot { animation: pulse 2s ease-in-out infinite; }
-  #statusPill.connecting  .dot { animation: blink .7s step-end infinite; }
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
 
-  @keyframes pulse {
-    0%,100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
-    50%      { opacity: .7; box-shadow: 0 0 0 3px transparent; }
-  }
-  @keyframes blink { 50% { opacity: 0; } }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
 
-  .endpoint-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: .04em;
-  }
+        button:active {
+            transform: translateY(0);
+        }
 
-  /* ── Stats row ───────────────────────────────────────────── */
-  .stats-row {
-    display: flex;
-    gap: 12px;
-  }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
 
-  .stat {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-dim);
-    white-space: nowrap;
-  }
+        .message-log {
+            background-color: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
 
-  .stat-val {
-    color: var(--text);
-    font-weight: 600;
-    min-width: 20px;
-    text-align: right;
-  }
+        .message {
+            margin-bottom: 12px;
+            padding: 10px;
+            border-radius: 6px;
+            word-break: break-word;
+        }
 
-  /* ── Main panel ──────────────────────────────────────────── */
-  .panel {
-    display: grid;
-    grid-template-rows: 1fr;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    position: relative;
-  }
+        .message.sent {
+            background-color: #e3f2fd;
+            border-left: 3px solid #2196F3;
+            color: #1565c0;
+        }
 
-  /* Corner label */
-  .panel::before {
-    content: 'CONSOLE OUTPUT';
-    position: absolute;
-    top: 0; left: 0;
-    padding: 4px 10px;
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: .1em;
-    color: var(--text-muted);
-    background: var(--surface2);
-    border-bottom: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-    border-radius: 0 0 var(--radius) 0;
-    z-index: 1;
-  }
+        .message.received {
+            background-color: #f3e5f5;
+            border-left: 3px solid #9c27b0;
+            color: #6a1b9a;
+        }
 
-  #log {
-    padding: 36px 14px 14px;
-    overflow-y: auto;
-    font-family: var(--font-mono);
-    font-size: 12.5px;
-    line-height: 1.7;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    scroll-behavior: smooth;
-  }
+        .message.system {
+            background-color: #fff3e0;
+            border-left: 3px solid #ff9800;
+            color: #e65100;
+        }
 
-  #log::-webkit-scrollbar { width: 6px; }
-  #log::-webkit-scrollbar-track { background: transparent; }
-  #log::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+        .message.error {
+            background-color: #ffebee;
+            border-left: 3px solid #f44336;
+            color: #c62828;
+        }
 
-  /* ── Log entries ─────────────────────────────────────────── */
-  .entry {
-    display: grid;
-    grid-template-columns: 70px 50px 1fr;
-    gap: 10px;
-    align-items: baseline;
-    padding: 3px 6px;
-    border-radius: 2px;
-    animation: fadeIn .2s ease;
-  }
+        .message-time {
+            opacity: 0.7;
+            font-size: 11px;
+        }
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateX(-6px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
 
-  .entry:hover { background: rgba(255,255,255,.025); }
+        @media (max-width: 768px) {
+            .sensor-grid {
+                grid-template-columns: 1fr;
+            }
+        }
 
-  .entry-time {
-    color: var(--text-muted);
-    font-size: 10px;
-    white-space: nowrap;
-    padding-top: 2px;
-  }
+        .sensor-card {
+            background-color: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+        }
 
-  .entry-tag {
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    padding: 1px 5px;
-    border-radius: 2px;
-    text-align: center;
-    white-space: nowrap;
-  }
+        .sensor-card.valid {
+            border-color: #44ff44;
+            background-color: #f0fff0;
+        }
 
-  .tag-sent     { color: var(--sent-color); background: rgba(106,180,255,.1); border: 1px solid rgba(106,180,255,.25); }
-  .tag-recv     { color: var(--recv-color); background: rgba(0,229,160,.1);  border: 1px solid rgba(0,229,160,.25); }
-  .tag-sys      { color: var(--sys-color);  background: rgba(255,184,0,.1);  border: 1px solid rgba(255,184,0,.25); }
-  .tag-err      { color: var(--danger);     background: rgba(255,77,77,.1);  border: 1px solid rgba(255,77,77,.25); }
+        .sensor-card.invalid {
+            border-color: #ff4444;
+            background-color: #fff0f0;
+        }
 
-  .entry-msg { color: var(--text); word-break: break-all; }
-  .entry-msg.sent { color: var(--sent-color); }
-  .entry-msg.recv { color: var(--recv-color); }
-  .entry-msg.sys  { color: var(--text-dim); }
-  .entry-msg.err  { color: var(--danger); }
+        .sensor-name {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-  /* JSON pretty-print */
-  .json-key   { color: #a8c5ff; }
-  .json-str   { color: #98e4b4; }
-  .json-num   { color: #ffcc80; }
-  .json-bool  { color: #ff9f7e; }
+        .sensor-value {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 13px;
+        }
 
-  /* ── Input row ───────────────────────────────────────────── */
-  .input-row {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 8px;
-    align-items: stretch;
-  }
+        .sensor-value-item {
+            display: flex;
+            justify-content: space-between;
+        }
 
-  #msgInput {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 13px;
-    padding: 10px 14px;
-    outline: none;
-    transition: border-color .2s, box-shadow .2s;
-  }
+        .sensor-label {
+            opacity: 0.7;
+        }
 
-  #msgInput:focus {
-    border-color: var(--accent-dim);
-    box-shadow: 0 0 0 2px var(--accent-glow);
-  }
+        .sensor-data {
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
 
-  #msgInput::placeholder { color: var(--text-muted); }
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
 
-  #msgInput:disabled {
-    opacity: .4;
-    cursor: not-allowed;
-  }
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
 
-  button {
-    cursor: pointer;
-    border: none;
-    border-radius: var(--radius);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    padding: 10px 18px;
-    transition: background .15s, transform .1s, box-shadow .15s;
-    white-space: nowrap;
-  }
+        .btn-control {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
 
-  button:active { transform: translateY(1px); }
+        .btn-control.disabled {
+            background: linear-gradient(135deg, #ccc 0%, #999 100%);
+        }
 
-  #sendBtn {
-    background: var(--accent);
-    color: #050f0a;
-    min-width: 80px;
-  }
+        .clear-button {
+            margin-top: 10px;
+            background-color: #666;
+            width: 100%;
+        }
 
-  #sendBtn:hover:not(:disabled) {
-    background: #1afcb5;
-    box-shadow: 0 0 16px rgba(0,229,160,.4);
-  }
+        .full-width {
+            grid-column: 1 / -1;
+        }
 
-  #sendBtn:disabled {
-    background: var(--surface2);
-    color: var(--text-muted);
-    cursor: not-allowed;
-  }
+        .scroll-indicator {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 5px;
+        }
 
-  #clearBtn {
-    background: var(--surface2);
-    color: var(--text-dim);
-    border: 1px solid var(--border);
-  }
+        .command-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
 
-  #clearBtn:hover {
-    background: var(--border);
-    color: var(--text);
-  }
+        .cmd-btn {
+            padding: 10px;
+            font-size: 12px;
+        }
 
-  /* ── Footer ──────────────────────────────────────────────── */
-  footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text-muted);
-    border-top: 1px solid var(--border);
-    padding-top: 10px;
-  }
+        .divider {
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 20px 0;
+        }
 
-  #reconnectBar {
-    display: none;
-    align-items: center;
-    gap: 8px;
-    color: var(--warn);
-  }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
 
-  #reconnectBar.visible { display: flex; }
+        .stat-item {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
 
-  .progress-track {
-    width: 100px;
-    height: 3px;
-    background: var(--surface2);
-    border-radius: 2px;
-    overflow: hidden;
-  }
+        .stat-label {
+            opacity: 0.7;
+        }
 
-  .progress-fill {
-    height: 100%;
-    background: var(--warn);
-    border-radius: 2px;
-    transition: width .1s linear;
-  }
-</style>
+        .stat-value {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .sensor-controls {
+            margin-bottom: 15px;
+        }
+
+        .sensor-control-btn {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <!-- Left Panel: Messages and Commands -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    <span>WebSocket Terminal</span>
+                </div>
+                <div id="clientCount">0 clients</div>
+            </div>
 
-<div class="shell">
+            <div class="connection-status" id="connectionStatus">
+                <div class="connection-status-text">
+                    Status: <strong id="statusText">Disconnected</strong>
+                </div>
+            </div>
 
-  <!-- ── Header ──────────────────────────────────────────── -->
-  <header>
-    <div class="brand">
-      <div class="brand-icon">
-        <!-- ESP32 chip icon -->
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-             xmlns="http://www.w3.org/2000/svg">
-          <rect x="4" y="4" width="12" height="12" rx="1"
-                stroke="#00e5a0" stroke-width="1.2"/>
-          <rect x="7" y="7" width="6" height="6" rx=".5"
-                fill="none" stroke="#00e5a0" stroke-width="1"/>
-          <!-- pins left -->
-          <line x1="1" y1="7"  x2="4" y2="7"  stroke="#00e5a0" stroke-width="1"/>
-          <line x1="1" y1="10" x2="4" y2="10" stroke="#00e5a0" stroke-width="1"/>
-          <line x1="1" y1="13" x2="4" y2="13" stroke="#00e5a0" stroke-width="1"/>
-          <!-- pins right -->
-          <line x1="16" y1="7"  x2="19" y2="7"  stroke="#00e5a0" stroke-width="1"/>
-          <line x1="16" y1="10" x2="19" y2="10" stroke="#00e5a0" stroke-width="1"/>
-          <line x1="16" y1="13" x2="19" y2="13" stroke="#00e5a0" stroke-width="1"/>
-        </svg>
-      </div>
-      <div class="brand-text">
-        <h1>ESP32 · WebSocket Console</h1>
-        <p>192.168.4.1 &nbsp;/&nbsp; port 80 &nbsp;/&nbsp; endpoint /ws</p>
-      </div>
+            <div class="input-group">
+                <input type="text" id="messageInput" placeholder="Enter message..." disabled>
+                <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+            </div>
+
+            <div class="command-buttons">
+                <button class="cmd-btn" onclick="sendCommand('ping')">🔔 Ping</button>
+                <button class="cmd-btn" onclick="sendCommand('sensor_data')">📊 Get Sensors</button>
+                <button class="cmd-btn" onclick="sendCommand('system_info')">ℹ️ System Info</button>
+                <button class="cmd-btn" onclick="sendCommand('echo')">🔊 Echo</button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-label">Messages Sent</div>
+                    <div class="stat-value" id="sentCount">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Messages Received</div>
+                    <div class="stat-value" id="receivedCount">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Connection Time</div>
+                    <div class="stat-value" id="connectionTime">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">ESP32 Uptime</div>
+                    <div class="stat-value" id="esp32Uptime">-</div>
+                </div>
+            </div>
+
+            <div class="message-log" id="messageLog"></div>
+            <button class="clear-button" onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <!-- Right Panel: Sensor Data -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📡 Sensor Dashboard</div>
+            </div>
+
+            <div class="sensor-controls">
+                <button class="sensor-control-btn" onclick="controlSensor('BMP180', 'toggle')">
+                    🌡️ BMP180 (Toggle)
+                </button>
+                <button class="sensor-control-btn" onclick="controlSensor('BH1750', 'toggle')">
+                    💡 BH1750 (Toggle)
+                </button>
+                <button class="sensor-control-btn" onclick="controlSensor('DHT22', 'toggle')">
+                    💧 DHT22 (Toggle)
+                </button>
+                <button class="sensor-control-btn" onclick="controlSensor('SoilMoisture', 'toggle')">
+                    🌱 Soil Moisture (Toggle)
+                </button>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="sensor-grid">
+                <!-- BMP180 -->
+                <div class="sensor-card" id="sensor-bmp180">
+                    <div class="sensor-name">
+                        🌡️ BMP180
+                        <span id="bmp180-status" style="font-size: 12px; opacity: 0.7;">-</span>
+                    </div>
+                    <div class="sensor-value">
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Temperature:</span>
+                            <span class="sensor-data" id="bmp180-temp">-- °C</span>
+                        </div>
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Pressure:</span>
+                            <span class="sensor-data" id="bmp180-pressure">-- hPa</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BH1750 -->
+                <div class="sensor-card" id="sensor-bh1750">
+                    <div class="sensor-name">
+                        💡 BH1750
+                        <span id="bh1750-status" style="font-size: 12px; opacity: 0.7;">-</span>
+                    </div>
+                    <div class="sensor-value">
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Illuminance:</span>
+                            <span class="sensor-data" id="bh1750-illum">-- Lux</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DHT22 -->
+                <div class="sensor-card" id="sensor-dht22">
+                    <div class="sensor-name">
+                        💧 DHT22
+                        <span id="dht22-status" style="font-size: 12px; opacity: 0.7;">-</span>
+                    </div>
+                    <div class="sensor-value">
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Temperature:</span>
+                            <span class="sensor-data" id="dht22-temp">-- °C</span>
+                        </div>
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Humidity:</span>
+                            <span class="sensor-data" id="dht22-humidity">-- %RH</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Soil Moisture -->
+                <div class="sensor-card" id="sensor-soil">
+                    <div class="sensor-name">
+                        🌱 Soil Moisture
+                        <span id="soil-status" style="font-size: 12px; opacity: 0.7;">-</span>
+                    </div>
+                    <div class="sensor-value">
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Moisture:</span>
+                            <span class="sensor-data" id="soil-percent">-- %</span>
+                        </div>
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Raw:</span>
+                            <span class="sensor-data" id="soil-raw">-- (0-4095)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MPU6050 -->
+                <div class="sensor-card full-width" id="sensor-mpu6050">
+                    <div class="sensor-name">
+                        🎯 MPU6050
+                        <span id="mpu6050-status" style="font-size: 12px; opacity: 0.7;">-</span>
+                    </div>
+                    <div class="sensor-value">
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Acceleration (m/s²):</span>
+                            <span class="sensor-data">X: <span id="mpu6050-accel-x">--</span> Y: <span id="mpu6050-accel-y">--</span> Z: <span id="mpu6050-accel-z">--</span></span>
+                        </div>
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Gyroscope (°/s):</span>
+                            <span class="sensor-data">X: <span id="mpu6050-gyro-x">--</span> Y: <span id="mpu6050-gyro-y">--</span> Z: <span id="mpu6050-gyro-z">--</span></span>
+                        </div>
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Temperature:</span>
+                            <span class="sensor-data" id="mpu6050-temp">-- °C</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rain Gauge -->
+                <div class="sensor-card full-width" id="sensor-rain">
+                    <div class="sensor-name">
+                        🌧️ Rain Gauge
+                        <span id="rain-status" style="font-size: 12px; opacity: 0.7;">-</span>
+                    </div>
+                    <div class="sensor-value">
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Total Rainfall:</span>
+                            <span class="sensor-data" id="rain-total">-- mm</span>
+                        </div>
+                        <div class="sensor-value-item">
+                            <span class="sensor-label">Tip Count:</span>
+                            <span class="sensor-data" id="rain-tips">-- tips</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="status-wrap">
-      <div id="statusPill" class="disconnected">
-        <span class="dot"></span>
-        <span id="statusText">DISCONNECTED</span>
-      </div>
-      <span class="endpoint-label">ws://192.168.4.1/ws</span>
-    </div>
-  </header>
+    <script>
+        // ==================== Configuration ====================
+        const WS_URL = 'ws://192.168.4.1/ws';
+        const RECONNECT_INTERVAL = 3000;  // 3 seconds
+        const MAX_LOG_MESSAGES = 100;
 
-  <!-- ── Stats + log panel ───────────────────────────────── -->
-  <div style="display:grid;grid-template-rows:auto 1fr;gap:10px;min-height:0">
+        // ==================== Global Variables ====================
+        let ws = null;
+        let isConnected = false;
+        let messageCount = { sent: 0, received: 0 };
+        let connectionStartTime = null;
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 10;
+        let sensorStates = {
+            'BMP180': true,
+            'BH1750': true,
+            'MPU6050': true,
+            'DHT22': true,
+            'SoilMoisture': true,
+            'RainGauge': true
+        };
 
-    <div class="stats-row">
-      <div class="stat">↑ SENT <span class="stat-val" id="sentCount">0</span></div>
-      <div class="stat">↓ RECV <span class="stat-val" id="recvCount">0</span></div>
-      <div class="stat">⏱ UPTIME <span class="stat-val" id="espUptime">—</span></div>
-      <div class="stat">👥 CLIENTS <span class="stat-val" id="espClients">—</span></div>
-    </div>
+        // ==================== Initialization ====================
+        window.addEventListener('DOMContentLoaded', () => {
+            connectWebSocket();
+            updateConnectionTime();
+            setInterval(updateConnectionTime, 1000);
+        });
 
-    <div class="panel">
-      <div id="log"></div>
-    </div>
-  </div>
+        // ==================== WebSocket Connection ====================
+        function connectWebSocket() {
+            try {
+                ws = new WebSocket(WS_URL);
 
-  <!-- ── Input ────────────────────────────────────────────── -->
-  <div style="display:grid;gap:10px">
-    <div class="input-row">
-      <input id="msgInput" type="text" placeholder="Type a message and press Enter or Send…"
-             disabled autocomplete="off" spellcheck="false">
-      <button id="sendBtn" disabled>Send</button>
-      <button id="clearBtn">Clear</button>
-    </div>
+                ws.onopen = () => {
+                    isConnected = true;
+                    reconnectAttempts = 0;
+                    connectionStartTime = Date.now();
+                    updateConnectionStatus();
+                    addSystemMessage('✓ Connected to ESP32', 'system');
+                    console.log('WebSocket connected:', WS_URL);
+                    
+                    // Enable input
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                };
 
-    <footer>
-      <span>Open this file while connected to <b style="color:var(--text)">ESP32-WebSocket-Test</b></span>
-      <div id="reconnectBar">
-        <span id="reconnectLabel">Reconnecting in <b id="reconnectSec">3</b>s</span>
-        <div class="progress-track"><div class="progress-fill" id="reconnectProgress" style="width:0%"></div></div>
-      </div>
-    </footer>
-  </div>
+                ws.onmessage = (event) => {
+                    handleMessage(event.data);
+                };
 
-</div>
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    addSystemMessage('✗ WebSocket error occurred', 'error');
+                };
 
-<!-- ──────────────────────────────────────────────────────────
-     JavaScript
-─────────────────────────────────────────────────────────── -->
-<script>
-'use strict';
+                ws.onclose = () => {
+                    isConnected = false;
+                    updateConnectionStatus();
+                    addSystemMessage('✗ Disconnected from ESP32', 'error');
+                    
+                    // Disable input
+                    document.getElementById('messageInput').disabled = true;
+                    document.getElementById('sendBtn').disabled = true;
+                    
+                    // Attempt reconnection
+                    attemptReconnect();
+                };
+            } catch (error) {
+                console.error('Failed to create WebSocket:', error);
+                addSystemMessage('✗ Failed to create connection', 'error');
+                attemptReconnect();
+            }
+        }
 
-// ── Configuration ──────────────────────────────────────────
-const WS_URL            = 'ws://192.168.4.1/ws';
-const RECONNECT_DELAY   = 5000;   // ms between reconnect attempts
-const MAX_LOG_ENTRIES   = 300;
+        function attemptReconnect() {
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                addSystemMessage(
+                    `Reconnecting... (attempt ${reconnectAttempts}/${maxReconnectAttempts})`,
+                    'system'
+                );
+                setTimeout(connectWebSocket, RECONNECT_INTERVAL);
+            } else {
+                addSystemMessage('✗ Max reconnection attempts reached', 'error');
+            }
+        }
 
-// ── State ───────────────────────────────────────────────────
-let ws              = null;
-let sentCount       = 0;
-let recvCount       = 0;
-let reconnectTimer  = null;
-let reconnectTick   = null;
-let isManualClose   = false;
+        // ==================== Message Handling ====================
+        function handleMessage(data) {
+            messageCount.received++;
+            updateStats();
 
-// ── DOM refs ─────────────────────────────────────────────── 
-const logEl          = document.getElementById('log');
-const msgInput       = document.getElementById('msgInput');
-const sendBtn        = document.getElementById('sendBtn');
-const clearBtn       = document.getElementById('clearBtn');
-const statusPill     = document.getElementById('statusPill');
-const statusText     = document.getElementById('statusText');
-const sentCountEl    = document.getElementById('sentCount');
-const recvCountEl    = document.getElementById('recvCount');
-const espUptimeEl    = document.getElementById('espUptime');
-const espClientsEl   = document.getElementById('espClients');
-const reconnectBar   = document.getElementById('reconnectBar');
-const reconnectSec   = document.getElementById('reconnectSec');
-const reconnectProg  = document.getElementById('reconnectProgress');
+            try {
+                const message = JSON.parse(data);
+                const messageType = message.type || 'unknown';
 
-// ── Helpers ──────────────────────────────────────────────── 
+                // Log the message
+                addMessage(`Received (${messageType}):`, 'received');
+                addMessage(JSON.stringify(message, null, 2), 'received');
 
-function timestamp() {
-  const d = new Date();
-  return [
-    String(d.getHours()).padStart(2,'0'),
-    String(d.getMinutes()).padStart(2,'0'),
-    String(d.getSeconds()).padStart(2,'0'),
-    '.' + String(d.getMilliseconds()).padStart(3,'0')
-  ].join('').replace('.', ':').replace(/(\d{2})(\d{2})(\d{2})/, '$1:$2:$3');
-}
+                // Update sensor data if it's a broadcast
+                if (messageType === 'sensor_broadcast') {
+                    updateSensorDisplay(message);
+                }
 
-/**
- * Attempt to pretty-print JSON with syntax highlighting.
- * Falls back to raw text if not valid JSON.
- */
-function formatMsg(raw) {
-  try {
-    const obj = JSON.parse(raw);
-    return syntaxHighlight(JSON.stringify(obj, null, 2));
-  } catch {
-    return escapeHtml(raw);
-  }
-}
+                // Update system info
+                if (messageType === 'system_info') {
+                    updateSystemInfo(message);
+                }
 
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
+            } catch (error) {
+                console.error('Failed to parse message:', error);
+                addMessage(data, 'received');
+            }
+        }
 
-function syntaxHighlight(json) {
-  json = escapeHtml(json);
-  return json.replace(
-    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
-    match => {
-      let cls = 'json-num';
-      if (/^"/.test(match)) {
-        cls = /:$/.test(match) ? 'json-key' : 'json-str';
-      } else if (/true|false/.test(match)) {
-        cls = 'json-bool';
-      }
-      return `<span class="${cls}">${match}</span>`;
-    }
-  );
-}
+        // ==================== Message Display ====================
+        function addMessage(text, type = 'received') {
+            const log = document.getElementById('messageLog');
+            const time = new Date().toLocaleTimeString();
+            
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+            messageEl.innerHTML = `
+                <span class="message-time">[${time}]</span><br>
+                ${escapeHtml(text)}
+            `;
+            
+            log.appendChild(messageEl);
+            
+            // Keep only last N messages
+            const messages = log.querySelectorAll('.message');
+            if (messages.length > MAX_LOG_MESSAGES) {
+                messages[0].remove();
+            }
+            
+            // Auto-scroll to bottom
+            log.scrollTop = log.scrollHeight;
+        }
 
-/**
- * Append a line to the console log.
- * type: 'sent' | 'recv' | 'sys' | 'err'
- */
-function log(type, message) {
-  // Trim old entries
-  while (logEl.children.length >= MAX_LOG_ENTRIES) {
-    logEl.removeChild(logEl.firstChild);
-  }
+        function addSystemMessage(text, type = 'system') {
+            addMessage(text, type);
+        }
 
-  const tagLabels = { sent: 'SENT', recv: 'RECV', sys: 'SYS', err: 'ERR' };
+        function clearLog() {
+            document.getElementById('messageLog').innerHTML = '';
+            addSystemMessage('Log cleared', 'system');
+        }
 
-  const entry = document.createElement('div');
-  entry.className = 'entry';
-  entry.innerHTML =
-    `<span class="entry-time">${timestamp()}</span>` +
-    `<span class="entry-tag tag-${type}">${tagLabels[type]}</span>` +
-    `<span class="entry-msg ${type}">${formatMsg(message)}</span>`;
+        // ==================== Sending Messages ====================
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
 
-  logEl.appendChild(entry);
+            if (!text) return;
+            if (!isConnected) {
+                addSystemMessage('✗ Not connected', 'error');
+                return;
+            }
 
-  // Auto-scroll unless user has scrolled up
-  const atBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 60;
-  if (atBottom) logEl.scrollTop = logEl.scrollHeight;
-}
+            try {
+                const message = {
+                    type: 'echo',
+                    message: text,
+                    timestamp: Date.now()
+                };
 
-function setStatus(state) {
-  // state: 'connected' | 'connecting' | 'disconnected'
-  statusPill.className = state;
-  statusText.textContent = state.toUpperCase();
+                ws.send(JSON.stringify(message));
+                messageCount.sent++;
+                updateStats();
 
-  const isConnected = (state === 'connected');
-  msgInput.disabled = !isConnected;
-  sendBtn.disabled  = !isConnected;
-}
+                addMessage(`Sent: ${text}`, 'sent');
+                input.value = '';
+                input.focus();
+            } catch (error) {
+                console.error('Failed to send message:', error);
+                addSystemMessage(`✗ Send failed: ${error.message}`, 'error');
+            }
+        }
 
-// ── Reconnect countdown UI ───────────────────────────────── 
+        function sendCommand(command) {
+            if (!isConnected) {
+                addSystemMessage('✗ Not connected', 'error');
+                return;
+            }
 
-function startReconnectCountdown(delaySec) {
-  clearReconnectUI();
-  reconnectBar.classList.add('visible');
-  let remaining = delaySec;
+            try {
+                let message = {};
 
-  const update = () => {
-    reconnectSec.textContent = remaining;
-    reconnectProg.style.width = ((delaySec - remaining) / delaySec * 100) + '%';
-    if (remaining > 0) remaining--;
-  };
+                switch (command) {
+                    case 'ping':
+                        message = { type: 'ping' };
+                        break;
+                    case 'sensor_data':
+                        message = { type: 'sensor_data' };
+                        break;
+                    case 'system_info':
+                        message = { type: 'system_info' };
+                        break;
+                    case 'echo':
+                        message = { 
+                            type: 'echo',
+                            message: 'Hello ESP32!'
+                        };
+                        break;
+                }
 
-  update();
-  reconnectTick = setInterval(update, 1000);
-}
+                message.timestamp = Date.now();
+                ws.send(JSON.stringify(message));
+                messageCount.sent++;
+                updateStats();
 
-function clearReconnectUI() {
-  clearInterval(reconnectTick);
-  reconnectTick = null;
-  reconnectBar.classList.remove('visible');
-}
+                addMessage(`Sent command: ${command}`, 'sent');
+            } catch (error) {
+                console.error('Failed to send command:', error);
+                addSystemMessage(`✗ Command failed: ${error.message}`, 'error');
+            }
+        }
 
-// ── WebSocket lifecycle ──────────────────────────────────── 
+        function controlSensor(sensor, action) {
+            if (!isConnected) {
+                addSystemMessage('✗ Not connected', 'error');
+                return;
+            }
 
-function connect() {
-  if (ws && (ws.readyState === WebSocket.OPEN ||
-             ws.readyState === WebSocket.CONNECTING)) return;
+            try {
+                const newState = !sensorStates[sensor];
+                const message = {
+                    type: 'sensor_control',
+                    sensor: sensor,
+                    action: newState ? 'enable' : 'disable',
+                    timestamp: Date.now()
+                };
 
-  isManualClose = false;
-  setStatus('connecting');
-  log('sys', `Connecting to ${WS_URL} …`);
+                ws.send(JSON.stringify(message));
+                messageCount.sent++;
+                updateStats();
 
-  try {
-    ws = new WebSocket(WS_URL);
-  } catch (e) {
-    log('err', `WebSocket constructor error: ${e.message}`);
-    scheduleReconnect();
-    return;
-  }
+                sensorStates[sensor] = newState;
+                addMessage(`${action === 'toggle' ? 'Toggled' : action} ${sensor} to ${newState ? 'ON' : 'OFF'}`, 'sent');
+            } catch (error) {
+                console.error('Failed to control sensor:', error);
+                addSystemMessage(`✗ Control failed: ${error.message}`, 'error');
+            }
+        }
 
-  ws.onopen = () => {
-    clearReconnectUI();
-    setStatus('connected');
-    log('sys', `Connected to ${WS_URL}`);
-    msgInput.focus();
-  };
+        // ==================== Sensor Display Update ====================
+        function updateSensorDisplay(data) {
+            // BMP180
+            if (data.bmp180) {
+                updateSensorCard('bmp180', data.bmp180.valid);
+                if (data.bmp180.valid) {
+                    document.getElementById('bmp180-temp').textContent = 
+                        data.bmp180.temperature.toFixed(2) + ' °C';
+                    document.getElementById('bmp180-pressure').textContent = 
+                        data.bmp180.pressure.toFixed(2) + ' hPa';
+                }
+            }
 
-  ws.onmessage = (evt) => {
-    recvCount++;
-    recvCountEl.textContent = recvCount;
-    log('recv', evt.data);
+            // BH1750
+            if (data.bh1750) {
+                updateSensorCard('bh1750', data.bh1750.valid);
+                if (data.bh1750.valid) {
+                    document.getElementById('bh1750-illum').textContent = 
+                        data.bh1750.illuminance.toFixed(2) + ' Lux';
+                }
+            }
 
-    // Parse status broadcasts and update stats
-    try {
-      const parsed = JSON.parse(evt.data);
-      if (parsed.event === 'status') {
-        if (parsed.uptime  !== undefined)
-          espUptimeEl.textContent  = parsed.uptime + 's';
-        if (parsed.clients !== undefined)
-          espClientsEl.textContent = parsed.clients;
-      }
-    } catch { /* not JSON or no status fields */ }
-  };
+            // DHT22
+            if (data.dht22) {
+                updateSensorCard('dht22', data.dht22.valid);
+                if (data.dht22.valid) {
+                    document.getElementById('dht22-temp').textContent = 
+                        data.dht22.temperature.toFixed(2) + ' °C';
+                    document.getElementById('dht22-humidity').textContent = 
+                        data.dht22.humidity.toFixed(2) + ' %RH';
+                }
+            }
 
-  ws.onclose = (evt) => {
-    setStatus('disconnected');
-    if (!isManualClose) {
-      log('sys',
-          `Connection closed (code ${evt.code})${evt.reason ? ': ' + evt.reason : ''}. ` +
-          `Reconnecting in ${RECONNECT_DELAY / 1000}s…`);
-      scheduleReconnect();
-    } else {
-      log('sys', 'Connection closed.');
-    }
-  };
+            // Soil Moisture
+            if (data.soil_moisture) {
+                updateSensorCard('soil', data.soil_moisture.valid);
+                if (data.soil_moisture.valid) {
+                    document.getElementById('soil-percent').textContent = 
+                        data.soil_moisture.percentage.toFixed(2) + ' %';
+                    document.getElementById('soil-raw').textContent = 
+                        data.soil_moisture.raw + ' (0-4095)';
+                }
+            }
 
-  ws.onerror = () => {
-    // onerror is always followed by onclose; log once there
-    log('err', 'WebSocket error — check that the ESP32 is powered and you are connected to ESP32-WebSocket-Test');
-  };
-}
+            // MPU6050
+            if (data.mpu6050) {
+                updateSensorCard('mpu6050', data.mpu6050.valid);
+                if (data.mpu6050.valid) {
+                    document.getElementById('mpu6050-accel-x').textContent = 
+                        data.mpu6050.acceleration.x.toFixed(2);
+                    document.getElementById('mpu6050-accel-y').textContent = 
+                        data.mpu6050.acceleration.y.toFixed(2);
+                    document.getElementById('mpu6050-accel-z').textContent = 
+                        data.mpu6050.acceleration.z.toFixed(2);
+                    document.getElementById('mpu6050-gyro-x').textContent = 
+                        data.mpu6050.gyroscope.x.toFixed(2);
+                    document.getElementById('mpu6050-gyro-y').textContent = 
+                        data.mpu6050.gyroscope.y.toFixed(2);
+                    document.getElementById('mpu6050-gyro-z').textContent = 
+                        data.mpu6050.gyroscope.z.toFixed(2);
+                    document.getElementById('mpu6050-temp').textContent = 
+                        data.mpu6050.temperature.toFixed(2) + ' °C';
+                }
+            }
 
-function scheduleReconnect() {
-  clearTimeout(reconnectTimer);
-  startReconnectCountdown(RECONNECT_DELAY / 1000);
-  reconnectTimer = setTimeout(() => {
-    clearReconnectUI();
-    connect();
-  }, RECONNECT_DELAY);
-}
+            // Rain Gauge
+            if (data.rain_gauge) {
+                updateSensorCard('rain', data.rain_gauge.valid);
+                if (data.rain_gauge.valid) {
+                    document.getElementById('rain-total').textContent = 
+                        data.rain_gauge.total_rainfall.toFixed(4) + ' mm';
+                    document.getElementById('rain-tips').textContent = 
+                        data.rain_gauge.tips + ' tips';
+                }
+            }
+        }
 
-function sendMessage() {
-  const msg = msgInput.value.trim();
-  if (!msg) return;
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    log('err', 'Not connected — cannot send');
-    return;
-  }
-  ws.send(msg);
-  sentCount++;
-  sentCountEl.textContent = sentCount;
-  log('sent', msg);
-  msgInput.value = '';
-  msgInput.focus();
-}
+        function updateSensorCard(cardId, isValid) {
+            const card = document.getElementById(`sensor-${cardId}`);
+            const statusEl = document.getElementById(`${cardId}-status`);
+            
+            if (isValid) {
+                card.classList.remove('invalid');
+                card.classList.add('valid');
+                statusEl.textContent = '✓ Valid';
+            } else {
+                card.classList.remove('valid');
+                card.classList.add('invalid');
+                statusEl.textContent = '✗ Invalid';
+            }
+        }
 
-// ── Event bindings ───────────────────────────────────────── 
+        function updateSystemInfo(data) {
+            if (data.uptime_ms) {
+                document.getElementById('esp32Uptime').textContent = 
+                    formatTime(data.uptime_ms);
+            }
+            if (data.connected_clients !== undefined) {
+                document.getElementById('clientCount').textContent = 
+                    data.connected_clients + ' client' + 
+                    (data.connected_clients !== 1 ? 's' : '');
+            }
+        }
 
-sendBtn.addEventListener('click', sendMessage);
+        // ==================== Status Display ====================
+        function updateConnectionStatus() {
+            const statusEl = document.getElementById('connectionStatus');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
 
-msgInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-});
+            if (isConnected) {
+                statusEl.classList.add('connected');
+                statusIndicator.classList.add('connected');
+                statusText.textContent = 'Connected';
+            } else {
+                statusEl.classList.remove('connected');
+                statusIndicator.classList.remove('connected');
+                statusText.textContent = 'Disconnected';
+            }
+        }
 
-clearBtn.addEventListener('click', () => {
-  logEl.innerHTML = '';
-  log('sys', 'Log cleared');
-});
+        function updateStats() {
+            document.getElementById('sentCount').textContent = messageCount.sent;
+            document.getElementById('receivedCount').textContent = messageCount.received;
+        }
 
-// Kick off initial connection on load
-log('sys', 'ESP32 WebSocket Console initialised');
-log('sys', `Target: ${WS_URL}`);
-log('sys', 'Make sure you are connected to Wi-Fi: ESP32-WebSocket-Test');
-connect();
-</script>
+        function updateConnectionTime() {
+            const timeEl = document.getElementById('connectionTime');
+            if (connectionStartTime && isConnected) {
+                const elapsed = Date.now() - connectionStartTime;
+                timeEl.textContent = formatTime(elapsed);
+            } else {
+                timeEl.textContent = '-';
+            }
+        }
 
+        // ==================== Utility Functions ====================
+        function formatTime(milliseconds) {
+            const seconds = Math.floor(milliseconds / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (days > 0) return `${days}d ${hours % 24}h`;
+            if (hours > 0) return `${hours}h ${minutes % 60}m`;
+            if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+            return `${seconds}s`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== Keyboard Support ====================
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
 </body>
 </html>

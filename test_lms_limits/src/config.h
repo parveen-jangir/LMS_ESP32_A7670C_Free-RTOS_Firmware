@@ -60,4 +60,6 @@
 #define ENERGY_INTERVAL_MS        1000
 #define SHUNT_RESISTANCE          0.05f   // ohms
 
+#define MAX_PAYLOAD_LEN         512
+
 #endif // CONFIG_H
