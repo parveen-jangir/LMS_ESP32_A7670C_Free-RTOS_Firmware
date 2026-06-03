@@ -11,7 +11,6 @@
  *  - HTTP/HTTPS GET & POST (hit any REST API)
  *  - MQTT client using built-in AT+MQTT firmware commands
  *  - Mobile data (PDP context) ON / OFF
- *  - Supply voltage reading (ADC or AT+CBC)
  *  - Signal strength / quality (AT+CSQ, AT+CPSI)
  *
  * Tested on: ESP32 + A7670C at 115200 baud, HardwareSerial (Serial1/Serial2)
@@ -123,13 +122,8 @@ public:
     RegStatus    getNetworkStatus();
     String       waitForHTTPAction(const String& cmd, uint32_t timeoutMs);
 
-    // ── Signal & voltage ──────────────────────────────────────────────────────
+    // ── Signal ──────────────────────────────────────────────────────────────────
     SignalInfo   getSignalStrength();       // AT+CSQ
-    /**
-     * Returns supply voltage in millivolts via AT+CBC.
-     * A7670C reports battery/VDD voltage on the CBC command.
-     */
-    int          getVoltage_mV();
 
     // ── Internet (PDP context) ─────────────────────────────────────────────────
     /**

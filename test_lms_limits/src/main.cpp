@@ -220,23 +220,6 @@ void testSignal() {
     else                    Serial.println("Excellent");
 }
 
-// ── 3. Voltage ────────────────────────────────────────────────────────────────
-void testVoltage() {
-    printSep();
-    Serial.println("  [3] SUPPLY VOLTAGE");
-    printSep();
-    int mv = gsm.getVoltage_mV();
-    if (mv < 0) {
-        Serial.println("  ✘  Could not read voltage (module may not support AT+CBC)");
-        return;
-    }
-    Serial.printf("  Voltage : %d mV  (%.3f V)\r\n", mv, mv / 1000.0f);
-    if      (mv < 3500) Serial.println("  ⚠  WARNING: Very low voltage!");
-    else if (mv < 3700) Serial.println("  ⚠  Low voltage");
-    else if (mv < 4200) Serial.println("  ✔  Normal range");
-    else                Serial.println("  ✔  Good");
-}
-
 // ── 4. Enable internet ────────────────────────────────────────────────────────
 void testEnableInternet() {
     printSep();
@@ -580,7 +563,7 @@ void loop() {
         switch (choice) {
             case 1:  testModuleInfo();      break;
             case 2:  testSignal();          break;
-            case 3:  testVoltage();         break;
+            case 3:  gsm.powerOn();         break;
             case 4:  testEnableInternet();  break;
             case 5:  testDisableInternet(); break;
             case 6:  testHttpGet();         break;
