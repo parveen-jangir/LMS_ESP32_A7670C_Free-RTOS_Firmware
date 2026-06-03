@@ -21,6 +21,7 @@
 
 #include <Arduino.h>
 #include <HardwareSerial.h>
+#include "config.h"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 #define A7670C_DEFAULT_BAUD       115200
@@ -98,10 +99,7 @@ public:
      * @param pwrPin    GPIO connected to A7670C PWRKEY (active LOW pulse)
      * @param baud      UART baud rate (default 115200)
      */
-    A7670C(HardwareSerial& serial,
-           int rxPin, int txPin,
-           int pwrPin,
-           long baud = A7670C_DEFAULT_BAUD);
+    A7670C(HardwareSerial &serial, int pwrPin);
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     bool         begin();                   // Init serial, power on, wait ready
@@ -258,10 +256,10 @@ private:
 
     // MQTT config cache
     String   _mqttClientId;
-    String   _mqttHost;
-    uint16_t _mqttPort    = 1883;
-    String   _mqttUser;
-    String   _mqttPass;
+    String   _mqttHost      =    MQTT_BROKER;
+    uint16_t _mqttPort      =    MQTT_PORT;
+    String   _mqttUser     =    MQTT_USER;
+    String   _mqttPass    =    MQTT_PASS;
 
     // Callbacks
     SmsCallback             _smsCb     = nullptr;

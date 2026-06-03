@@ -52,7 +52,7 @@ public:
     GSM_OTA(HardwareSerial& gsmSerial, HardwareSerial& debugSerial);
 
     // Initialise GSM UART (call in setup())
-    void begin(uint32_t baud, int8_t rxPin, int8_t txPin);
+    // void begin(uint32_t baud, int8_t rxPin, int8_t txPin);
 
     // Configuration
     void setAPN(const char* apn);

@@ -7,11 +7,8 @@
 
 // ─── Constructor ──────────────────────────────────────────────────────────────
 A7670C::A7670C(HardwareSerial &serial,
-               int rxPin, int txPin,
-               int pwrPin,
-               long baud)
-    : _serial(serial), _rxPin(rxPin), _txPin(txPin),
-      _pwrPin(pwrPin), _baud(baud) {}
+               int pwrPin)
+    : _serial(serial), _pwrPin(pwrPin) {}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  LIFECYCLE
@@ -22,12 +19,25 @@ bool A7670C::begin()
     pinMode(_pwrPin, OUTPUT);
     digitalWrite(_pwrPin, LOW); // Idle high
 
-    _serial.begin(_baud, SERIAL_8N1, _rxPin, _txPin);
-    delay(100);
+    // _serial.begin(_baud, SERIAL_8N1, _rxPin, _txPin);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
 
     // Try a quick ping first – maybe module is already on
     if (isAlive())
     {
+        reset();
+        
+        while(true){
+            SignalInfo info = getSignalStrength();
+            if(info.csq != 99){
+                _log("[A7670C] Signal strength: " + String(info.rssi) + " dBm");
+                break;
+            } else {
+                _log("[A7670C] Signal strength unknown");
+            }
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
+
         _initialized = true;
         _log("[A7670C] Module already on.");
         // Echo off, verbose errors
@@ -93,7 +103,7 @@ bool A7670C::waitReady(uint32_t timeoutMs)
     {
         if (isAlive())
             return true;
-        delay(500);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
     _log("[A7670C] Timeout waiting for ready.");
     return false;
