@@ -47,6 +47,8 @@ private:
     TaskHandle_t  workerHandle = nullptr;
 
     static void workerTask(void *param);
+    static void gsmTask(void *param);
+    
     void        workerLoop();
 
     void configSensors();

@@ -82,16 +82,20 @@
 #define COMMAND_TASK_CORE_ID        1
 
 #define SENSOR_TASK_STACK_SIZE    4096
-#define SENSOR_TASK_PRIORITY      2
+#define SENSOR_TASK_PRIORITY      7
 #define SENSOR_TASK_CORE          1    // Core 1 for sensor tasks
+
+#define GSM_TASK_STACK_SIZE       4096
+#define GSM_TASK_PRIORITY         6
+#define GSM_TASK_CORE             1    // Core 1 for GSM tasks
 
 // ==================== A7670C Configuration ====================
 #define CFG_APN         "airtelgprs.com"      // Your carrier APN
 #define CFG_SMS_NUMBER  "+919511511257"    // Number for SMS/call tests
 // #define MQTT_BROKER "35.182.218.175"
-#define MQTT_BROKER "broker.hivemq.com"
+#define MQTT_BROKER "76.13.243.127"
 #define MQTT_PORT    1883
-#define MQTT_USER   ""
-#define MQTT_PASS   ""
+#define MQTT_USER   "lms_mqtt_broker"
+#define MQTT_PASS   "landslidemonitoringsystem"
 
 #endif // CONFIG_H

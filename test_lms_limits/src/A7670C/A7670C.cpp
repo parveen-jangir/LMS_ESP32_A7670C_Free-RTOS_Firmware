@@ -566,11 +566,11 @@ A7670C_Result A7670C::mqttPublish(const String &topic,
         "AT+CMQTTPUB=0," +
             String(qos) +
             ",60",
-        "+CMQTTPUB:",
+        "OK",
         15000);
 
-    if (r.indexOf("+CMQTTPUB: 0,0") < 0)
-        return A7670C_Result::MQTT_ERROR;
+    // if (r.indexOf("+CMQTTPUB: 0,0") < 0)
+    //     return A7670C_Result::MQTT_ERROR;
 
     return A7670C_Result::OK;
 }

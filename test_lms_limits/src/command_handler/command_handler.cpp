@@ -1,10 +1,17 @@
 #include "command_handler.h"
 
+static CommandHandler *s_commandHandlerInstance = nullptr;
+
 void CommandHandler::mqttCallback(const String &topic, const String &payload)
 {
     Serial.println("  📨  MQTT MESSAGE RECEIVED");
     Serial.println("  Topic   : " + topic);
     Serial.println("  Payload : " + payload);
+
+    if (!s_commandHandlerInstance || !s_commandHandlerInstance->enqueue(payload.c_str(), payload.length(), false))
+    {
+        Serial.println(F("[CMD] mqttCallback: queue full"));
+    }
 }
 
 void CommandHandler::onSmsReceived(SmsMessage msg) {
@@ -26,6 +33,7 @@ void CommandHandler::onIncomingCall(const String& number) {
 CommandHandler::CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem)
     : sensorMgr(sensorMgr), storageMgr(storageMgr), gsmOta(gsmOta), modem(modem)
 {
+    s_commandHandlerInstance = this;
     cmdQueue = xQueueCreate(COMMAND_QUEUE_DEPTH, sizeof(commandFormat));
     configASSERT(cmdQueue);
 }
@@ -55,9 +63,9 @@ void CommandHandler::buildDeviceMac()
 
 void CommandHandler::buildTopic()
 {
-  _topic = String("lms/devices/") + _deviceMac + "/configuration/callback";
+  _topic = String("lms/devices/") + _deviceMac + "/configuration/send";
 
-  Serial.println("MQTT Topic: " + _topic);
+  Serial.println("[MQTT] Subscribed Topic: " + _topic);
 }
 
 // ── Private: enqueue ──────────────────────────────────────────────────────────
@@ -104,6 +112,15 @@ void CommandHandler::begin()
         &workerHandle
     );
 
+    xTaskCreate(
+        gsmTask, 
+        "GsmWorker", 
+        GSM_TASK_STACK_SIZE, 
+        this, 
+        GSM_TASK_PRIORITY, 
+        &workerHandle
+    );
+
     // configSensors();
 
     modem.onMqttMessage(mqttCallback);
@@ -124,11 +141,6 @@ void CommandHandler::begin()
         setupMqtt();
     }
 
-    while (true)
-    {
-        modem.loop();
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-    }
 }
 
 void printResult(A7670C_Result r) {
@@ -150,8 +162,15 @@ void CommandHandler::setupMqtt()
     vTaskDelay(500 / portTICK_PERIOD_MS);
     res = modem.mqttSubscribe(_topic, 0);
 
-    Serial.print("[CMD] MQTT Configure Result:");
+    Serial.print("[CMD] MQTT Configure Result: ");
     printResult(res);
+
+    if(res == A7670C_Result::OK) {
+        JsonDocument doc;
+        doc["status"] = "ok";
+        doc["message"] = "[MQTT] Live";
+        sendResponse(doc, true, true);
+    } 
 }
 
 void CommandHandler::workerTask(void *param)
@@ -163,6 +182,18 @@ void CommandHandler::workerTask(void *param)
         return;
     }
     handler->workerLoop();
+    vTaskDelete(nullptr);
+}
+
+// ── GSM animation task ───────────────────────────────────────────────────────
+void CommandHandler::gsmTask(void *param)
+{
+    CommandHandler *self = static_cast<CommandHandler *>(param);
+    while (true)
+    {
+        self->modem.loop();
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
     vTaskDelete(nullptr);
 }
 
@@ -216,7 +247,7 @@ void CommandHandler::dispatch(const commandFormat &pkt)
     }
     if (strcmp(cmdStr, "status") == 0)
     {
-        // doc["status"] = mqtt.isConnected() ? "ONLINE" : "OFFLINE";
+        doc["status"] = "ok";
         sendResponse(doc, pkt.formBle, pkt.formMqtt);
     }
     else
@@ -230,6 +261,10 @@ void CommandHandler::dispatch(const commandFormat &pkt)
 
 void CommandHandler::sendResponse(JsonDocument &response, bool toBle, bool toMqtt)
 {
+    String topic = String("lms/devices/") + _deviceMac + "/configuration/callback";
+    String payload;
+    serializeJson(response, payload);
+    
     if (toBle)
     {
         // Serialise to a stack buffer and send via BLE notify.
@@ -245,16 +280,16 @@ void CommandHandler::sendResponse(JsonDocument &response, bool toBle, bool toMqt
         //     Serial.println(F("[CMD] sendResponse(BLE): notify failed"));
         // }
     }
-    else if (toMqtt)
+
+    if (toMqtt)
     {
-        // if (!mqtt.publish(response))
-        // {
-        //     Serial.println(F("[CMD] sendResponse(MQTT): publish failed"));
-        // }
+        if (modem.mqttPublish(topic, payload) != A7670C_Result::OK)
+        {
+            Serial.println(F("[CMD] sendResponse(MQTT): publish failed"));
+        }
     }
 
-    Serial.print(F("[CMD] sendResponse: "));
-    serializeJson(response, Serial);
+    Serial.print(("[CMD] sendResponse: " + payload + "\n"));
 }
 
 void CommandHandler::configSensors()
