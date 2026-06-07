@@ -55,7 +55,6 @@
 #define ENERGY_INTERVAL_MS        1000
 #define SHUNT_RESISTANCE          0.05f   // ohms
 
-<<<<<<< HEAD
 // ==================== LoRa Configuration ====================
 #define LORA_FREQUENCY            433E6  // LoRa frequency (433 MHz)
 #define LORA_TX_POWER             14     // LoRa transmission power (dBm)
@@ -64,7 +63,6 @@
 #define LORA_NSS_PIN              5      // LoRa NSS pin
 #define LORA_RESET_PIN            25     // LoRa reset pin
 #define LORA_DIO0_PIN             26     // LoRa DIO0 pin
-=======
 #define MAX_PAYLOAD_LEN         512
 
 // ==================== A7670C Modem Configuration ====================
@@ -95,6 +93,5 @@
 #define MQTT_PORT    1883
 #define MQTT_USER   ""
 #define MQTT_PASS   ""
->>>>>>> branch 'main' of git@github.com:parveen-jangir/LMS_ESP32_A7670C_Free-RTOS_Firmware.git
 
 #endif // CONFIG_H
