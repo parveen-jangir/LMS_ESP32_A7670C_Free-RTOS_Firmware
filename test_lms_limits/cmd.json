@@ -95,7 +95,16 @@
         "type": "system_info",
         "uptime_s": 21,
         "free_heap": 316348,
+        "tid": "t108",
+        "mac": "00:11:22:33:44:55",
         "status": "ok"
+    },
+    {
+        "type": "save_tid"
+    },
+    {
+        "type": "save_tid",
+        "tid": "t108"
     },
     {
         "type": "battery_status"
@@ -106,6 +115,8 @@
         "voltage": 3.7,
         "current": 0.5,
         "power_mw": 1.85,
+        "percent": 71,
+        "energy_wh": 5.678,
         "status": "ok"
     },
     {
@@ -116,6 +127,7 @@
         "voltage": 5.0,
         "current": 0.2,
         "power_mw": 1.0,
+        "energy_wh": 12.345,
         "status": "ok"
     },
     {
@@ -127,6 +139,7 @@
         "voltage": 3.7,
         "current": 0.5,
         "power_mw": 1.85,
+        "energy_wh": 3.210,
         "status": "ok"
     }
 ]

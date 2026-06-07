@@ -45,6 +45,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .rbar{display:none;align-items:center;justify-content:center;gap:8px;padding:8px;background:rgba(255,184,0,.08);border-bottom:1px solid rgba(255,184,0,.2);font-size:12px;color:var(--warn)}
 .rbar.show{display:flex}
 
+/* floating pop-up toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(0);background:var(--sf2);border:1px solid var(--accent2);color:var(--accent);font-family:var(--mono);font-size:12px;font-weight:600;padding:10px 20px;border-radius:20px;z-index:999;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .25s}
+.toast.show{opacity:1}
+
 /* tabs */
 .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
 .tab{flex:1;min-width:72px;padding:12px 6px;font-size:12px;font-weight:600;text-align:center;letter-spacing:.04em;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:color .2s,border-color .2s;user-select:none}
@@ -79,14 +83,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .tgl-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--text);transition:transform .2s}
 .tgl input:checked~.tgl-thumb{transform:translateX(18px)}
 
-/* readings */
+/* readings grid */
 .rg{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:10px}
 .rd{background:var(--sf2);border:1px solid var(--border);border-radius:4px;padding:10px 12px}
 .rd-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:4px}
 .rd-val{font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1.2}
 .unit{font-size:12px;color:var(--dim);font-weight:400;margin-left:2px}
 
-/* movement count tile — wider, highlighted */
+/* movement count tile */
 .rd-move{background:var(--sf2);border:1px solid rgba(106,180,255,.3);border-radius:4px;padding:10px 12px;grid-column:span 2}
 .rd-move .rd-val{color:var(--info);font-size:26px}
 
@@ -111,18 +115,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 /* mpu action row */
 .mpu-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 
-/* power */
+/* power grid */
 .pg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 @media(max-width:400px){.pg{grid-template-columns:1fr}}
 .pr{background:var(--sf2);border:1px solid var(--border);border-radius:4px;padding:12px}
 .pr-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
-.pr-val{font-size:26px;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1.1;margin-top:4px}
-.pu{font-size:13px;color:var(--dim)}
-.state-badge{display:inline-block;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:700;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
-.st-sol{background:rgba(255,184,0,.12);color:var(--warn);border:1px solid rgba(255,184,0,.3)}
-.st-bat{background:rgba(106,180,255,.12);color:var(--info);border:1px solid rgba(106,180,255,.3)}
-.st-hyb{background:rgba(0,229,160,.12);color:var(--accent);border:1px solid rgba(0,229,160,.3)}
-.st-idl{background:rgba(122,136,132,.1);color:var(--dim);border:1px solid var(--border)}
+.pr-val{font-size:22px;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1.1;margin-top:4px}
+.pu{font-size:12px;color:var(--dim)}
 
 /* battery % bar */
 .bat-bar-wrap{margin-top:10px}
@@ -130,7 +129,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .bat-bar-fill{height:100%;border-radius:4px;background:var(--accent);transition:width .5s}
 .bat-bar-fill.low{background:var(--danger)}
 .bat-bar-fill.mid{background:var(--warn)}
-.bat-pct-label{font-size:11px;color:var(--dim);margin-top:4px;text-align:right}
 
 /* info table */
 .itbl{width:100%;border-collapse:collapse}
@@ -138,6 +136,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .itbl td:first-child{color:var(--dim);width:45%}
 .itbl td:last-child{font-weight:600;font-family:var(--mono)}
 .itbl tr:last-child td{border-bottom:none}
+
+/* tid input row */
+.tid-row{display:flex;gap:8px;margin-top:10px}
+.tid-in{flex:1;background:var(--sf2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:14px;padding:9px 12px;outline:none;transition:border-color .2s;letter-spacing:.06em}
+.tid-in:focus{border-color:var(--accent2)}
+.tid-in::placeholder{color:var(--muted)}
 
 /* signal bars */
 .sbars{display:inline-flex;gap:2px;align-items:flex-end;margin-left:6px}
@@ -177,6 +181,9 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 </style>
 </head>
 <body>
+
+<!-- floating toast pop-up -->
+<div class="toast" id="toast"></div>
 
 <!-- topbar -->
 <div class="topbar">
@@ -259,7 +266,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <div class="cbody">
       <div class="rg">
         <div class="rd"><div class="rd-label">Moisture</div><div class="rd-val" id="v-soil-p">—<span class="unit">%</span></div></div>
-        <div class="rd"><div class="rd-label">Raw ADC</div><div class="rd-val" id="v-soil-r">—<span class="unit">mV</span></div></div>
+        <div class="rd"><div class="rd-label">Raw ADC</div><div class="rd-val" id="v-soil-r">—</div></div>
       </div>
     </div>
   </div>
@@ -272,24 +279,21 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     </div>
     <div class="cbody">
       <div class="rg">
-        <div class="rd"><div class="rd-label">Accel X</div><div class="rd-val" id="v-ax">—<span class="unit">g</span></div></div>
-        <div class="rd"><div class="rd-label">Accel Y</div><div class="rd-val" id="v-ay">—<span class="unit">g</span></div></div>
-        <div class="rd"><div class="rd-label">Accel Z</div><div class="rd-val" id="v-az">—<span class="unit">g</span></div></div>
+        <div class="rd"><div class="rd-label">Accel X</div><div class="rd-val" id="v-ax">—<span class="unit">m/s²</span></div></div>
+        <div class="rd"><div class="rd-label">Accel Y</div><div class="rd-val" id="v-ay">—<span class="unit">m/s²</span></div></div>
+        <div class="rd"><div class="rd-label">Accel Z</div><div class="rd-val" id="v-az">—<span class="unit">m/s²</span></div></div>
         <div class="rd"><div class="rd-label">Gyro X</div><div class="rd-val" id="v-gx">—<span class="unit">°/s</span></div></div>
         <div class="rd"><div class="rd-label">Gyro Y</div><div class="rd-val" id="v-gy">—<span class="unit">°/s</span></div></div>
         <div class="rd"><div class="rd-label">Gyro Z</div><div class="rd-val" id="v-gz">—<span class="unit">°/s</span></div></div>
-        <!-- ★ NEW: Movement Count tile — spans full width row -->
         <div class="rd rd-move">
           <div class="rd-label">Movement Count</div>
           <div class="rd-val" id="v-mpu-mc">—</div>
         </div>
       </div>
-      <!-- ★ NEW: MPU action buttons -->
       <div class="mpu-actions">
         <button class="btn btn-w" style="padding:7px 13px;font-size:12px" onclick="resetMovement()">Reset Movement Count</button>
         <button class="btn btn-i" style="padding:7px 13px;font-size:12px" onclick="calibrateMPU()">Calibrate</button>
       </div>
-      <!-- ★ NEW: Calibration result box -->
       <div class="cal-result" id="mpu-cal-result">Press Calibrate to zero the MPU offsets. Keep the device level and still.</div>
     </div>
   </div>
@@ -306,7 +310,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
         <div class="rd"><div class="rd-label">Rainfall</div><div class="rd-val" id="v-rain-m">—<span class="unit">mm</span></div></div>
       </div>
       <div style="margin-top:10px">
-        <button class="btn btn-w" style="padding:7px 13px;font-size:12px" onclick="ws_send({cmd:'rain_reset'})">Reset Counter</button>
+        <button class="btn btn-w" style="padding:7px 13px;font-size:12px" onclick="resetRain()">Reset Counter</button>
       </div>
     </div>
   </div>
@@ -318,7 +322,11 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 <div class="page" id="p1">
   <div class="shdr">
     <span class="stitle">Power Monitor</span>
-    <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readPower()">Refresh</button>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readBattery()">Battery</button>
+      <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readSolar()">Solar</button>
+      <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readSystemPower()">System</button>
+    </div>
   </div>
 
   <!-- Solar -->
@@ -327,8 +335,8 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <div class="cbody">
       <div class="pg">
         <div class="pr"><div class="pr-label">Voltage</div><div class="pr-val" id="sv">—<span class="pu"> V</span></div></div>
-        <div class="pr"><div class="pr-label">Current</div><div class="pr-val" id="si">—<span class="pu"> mA</span></div></div>
-        <div class="pr"><div class="pr-label">Power</div><div class="pr-val" id="sp">—<span class="pu"> W</span></div></div>
+        <div class="pr"><div class="pr-label">Current</div><div class="pr-val" id="si">—<span class="pu"> A</span></div></div>
+        <div class="pr"><div class="pr-label">Power</div><div class="pr-val" id="sp">—<span class="pu"> mW</span></div></div>
         <div class="pr"><div class="pr-label">Energy</div><div class="pr-val" id="se">—<span class="pu"> Wh</span></div></div>
       </div>
     </div>
@@ -340,9 +348,10 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <div class="cbody">
       <div class="pg">
         <div class="pr"><div class="pr-label">Voltage</div><div class="pr-val" id="bv">—<span class="pu"> V</span></div></div>
-        <div class="pr"><div class="pr-label">Current</div><div class="pr-val" id="bi">—<span class="pu"> mA</span></div></div>
-        <div class="pr"><div class="pr-label">Power</div><div class="pr-val" id="bp">—<span class="pu"> W</span></div></div>
-        <div class="pr"><div class="pr-label">Energy Out</div><div class="pr-val" id="be">—<span class="pu"> Wh</span></div></div>
+        <div class="pr"><div class="pr-label">Current</div><div class="pr-val" id="bi">—<span class="pu"> A</span></div></div>
+        <div class="pr"><div class="pr-label">Power</div><div class="pr-val" id="bp">—<span class="pu"> mW</span></div></div>
+        <div class="pr"><div class="pr-label">Energy</div><div class="pr-val" id="be">—<span class="pu"> Wh</span></div></div>
+        <div class="pr"><div class="pr-label">Charging</div><div class="pr-val" id="b-chg" style="font-size:16px">—</div></div>
       </div>
       <!-- Battery % bar -->
       <div class="bat-bar-wrap">
@@ -352,23 +361,19 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
         </div>
         <div class="bat-bar-bg"><div class="bat-bar-fill" id="bat-bar" style="width:0%"></div></div>
       </div>
-      <!-- Charging time -->
-      <div style="margin-top:10px">
-        <table class="itbl">
-          <tr><td>Charging Time</td><td id="bat-charge-time">—</td></tr>
-        </table>
-      </div>
     </div>
   </div>
 
-  <!-- System -->
+  <!-- System Power -->
   <div class="card">
-    <div class="chard"><div class="ctitle">System</div></div>
+    <div class="chard"><div class="ctitle">System Power</div></div>
     <div class="cbody">
       <table class="itbl">
-        <tr><td>Power Source</td><td><span id="sys-state">—</span></td></tr>
-        <tr><td>Total Load</td><td><span id="sys-load" style="font-family:var(--mono)">—</span> W</td></tr>
-        <tr><td>Energy Consumed</td><td><span id="sys-energy" style="font-family:var(--mono)">—</span> Wh</td></tr>
+        <tr><td>Source</td><td id="sys-source">—</td></tr>
+        <tr><td>Voltage</td><td><span id="sys-pwr-v">—</span> V</td></tr>
+        <tr><td>Current</td><td><span id="sys-pwr-i">—</span> A</td></tr>
+        <tr><td>Power</td><td><span id="sys-pwr-p">—</span> mW</td></tr>
+        <tr><td>Energy</td><td><span id="sys-pwr-e">—</span> Wh</td></tr>
       </table>
     </div>
   </div>
@@ -391,10 +396,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     </div>
     <div class="cbody">
       <table class="itbl">
-        <tr>
-          <td>SIM Status</td>
-          <td id="gsm-sim">—</td>
-        </tr>
+        <tr><td>SIM Status</td><td id="gsm-sim">—</td></tr>
         <tr>
           <td>Signal (RSSI)</td>
           <td>
@@ -411,12 +413,12 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
         <tr><td>Operator</td><td id="gsm-op">—</td></tr>
         <tr><td>SIM Number</td><td id="gsm-num">—</td></tr>
         <tr><td>IP Address</td><td id="gsm-ip" style="font-size:12px">—</td></tr>
-        <tr><td>GSM Voltage</td><td><span id="gsm-v" style="font-family:var(--mono)">—</span> V</td></tr>
+        <tr><td>GSM Voltage</td><td><span id="gsm-v">—</span> V</td></tr>
       </table>
     </div>
   </div>
 
-  <!-- Sim Operator Select -->
+  <!-- SIM Config -->
   <div class="card">
     <div class="chard"><div class="ctitle">SIM Configuration</div></div>
     <div class="cbody">
@@ -428,7 +430,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
         <option value="vi.gprs">Vi — vi.gprs</option>
       </select>
       <button class="btn btn-s" style="width:100%;margin-bottom:8px" onclick="setAPN()">Apply APN</button>
-      <button class="btn btn-s" style="width:100%" onclick="ws_send({cmd:'gsm_at',command:'AT+CUSD=1,\"*121#\"'})">Get SIM Balance</button>
+      <button class="btn btn-s" style="width:100%" onclick="ws_send({type:'gsm_at',command:'AT+CUSD=1,&quot;*121#&quot;'})">Get SIM Balance</button>
     </div>
   </div>
 
@@ -475,6 +477,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 <div class="page" id="p3">
   <div class="shdr" style="margin-top:2px"><span class="stitle">LoRa / Hooter</span></div>
 
+  <!-- Hooter trigger -->
   <div class="card">
     <div class="chard">
       <div class="ctitle">LoRa RA-02 · 433 MHz <span class="badge b-wait" id="bd-lora">WAIT</span></div>
@@ -488,17 +491,27 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     </div>
   </div>
 
+  <!-- System Info -->
   <div class="card">
-    <div class="chard"><div class="ctitle">System Info</div></div>
+    <div class="chard">
+      <div class="ctitle">System Info</div>
+      <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="ws_send({type:'system_info'})">Refresh</button>
+    </div>
     <div class="cbody">
       <table class="itbl">
-        <tr><td>ESP32 Uptime</td><td id="sys-up" style="font-family:var(--mono)">—</td></tr>
-        <tr><td>Free Heap</td><td id="sys-heap" style="font-family:var(--mono)">—</td></tr>
-        <tr><td>WiFi Clients</td><td id="sys-cli" style="font-family:var(--mono)">—</td></tr>
-        <tr><td>MQTT Broker</td><td style="font-family:var(--mono)">76.13.243.127:9001</td></tr>
-        <tr><td>Pub Topic</td><td style="font-family:var(--mono)">lms/commands</td></tr>
-        <tr><td>Sub Topic</td><td style="font-family:var(--mono)">lms/data</td></tr>
+        <tr><td>Terminal ID (TID)</td><td id="sys-tid">—</td></tr>
+        <tr><td>MAC Address</td><td id="sys-mac">—</td></tr>
+        <tr><td>ESP32 Uptime</td><td id="sys-up">—</td></tr>
+        <tr><td>Free Heap</td><td id="sys-heap">—</td></tr>
+        <tr><td>MQTT Broker</td><td>76.13.243.127:9001</td></tr>
+        <tr><td>Pub Topic</td><td>lms/commands</td></tr>
+        <tr><td>Sub Topic</td><td>lms/data</td></tr>
       </table>
+      <!-- TID edit -->
+      <div class="tid-row">
+        <input class="tid-in" id="tidInput" type="text" placeholder="Enter TID e.g. t108" maxlength="20" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')saveTID()">
+        <button class="btn btn-p" style="padding:9px 16px" onclick="saveTID()">Save TID</button>
+      </div>
     </div>
   </div>
 </div>
@@ -513,8 +526,8 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 const BROKER    = 'ws://76.13.243.127:9001';
 const MQTT_USER = 'lms_mqtt_broker';
 const MQTT_PASS = 'landslidemonitoringsystem';
-const PUB_TOPIC = 'lms/commands';   // browser → broker  (MQTTX subscribes here)
-const SUB_TOPIC = 'lms/data';       // broker  → browser  (MQTTX publishes here)
+const PUB_TOPIC = 'lms/commands';
+const SUB_TOPIC = 'lms/data';
 
 let client = null, rTimer = null, rTick = null;
 let autoOn = false, autoTimer = null;
@@ -528,88 +541,92 @@ function tab(i) {
   pageEls.forEach((p,j) => p.classList.toggle('active', i===j));
 }
 
+// ── toast pop-up (2-second floating message) ──────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
 // ── MQTT connection ───────────────────────────────────────────────────────────
 function connect() {
   if (client && client.connected) return;
   setConn('connecting');
-
   client = mqtt.connect(BROKER, {
     username:        MQTT_USER,
     password:        MQTT_PASS,
     clientId:        'lms_browser_' + Math.random().toString(16).slice(2, 8),
-    reconnectPeriod: 0      // manual reconnect via schedReconn
+    reconnectPeriod: 0
   });
-
   client.on('connect', () => {
     clearReconn();
     setConn('connected');
     client.subscribe(SUB_TOPIC);
     readSensors();
-    readPower();
+    readBattery();
+    readSolar();
+    readSystemPower();
     refreshGSM();
-    ws_send({ cmd: 'system_info' });
+    ws_send({ type: 'system_info' });
   });
-
   client.on('message', (topic, payload) => {
     try { handle(JSON.parse(payload.toString())); } catch(e) {}
   });
-
-  client.on('close', () => {
-    setConn('disconnected');
-    schedReconn();
-  });
-
+  client.on('close', () => { setConn('disconnected'); schedReconn(); });
   client.on('error', () => {});
 }
 
-// Publish a JSON command to the broker
 function ws_send(obj) {
   if (client && client.connected)
     client.publish(PUB_TOPIC, JSON.stringify(obj));
 }
 
-// ── reconnect logic ───────────────────────────────────────────────────────────
+// ── reconnect ─────────────────────────────────────────────────────────────────
 function schedReconn() {
   clearTimeout(rTimer); let s = 5;
   document.getElementById('rsec').textContent = s;
   document.getElementById('rbar').classList.add('show');
-  rTick = setInterval(() => {
-    s--;
-    document.getElementById('rsec').textContent = Math.max(0, s);
-  }, 1000);
+  rTick = setInterval(() => { s--; document.getElementById('rsec').textContent = Math.max(0, s); }, 1000);
   rTimer = setTimeout(() => { clearReconn(); connect(); }, 5000);
 }
 function clearReconn() {
-  clearTimeout(rTimer);
-  clearInterval(rTick);
+  clearTimeout(rTimer); clearInterval(rTick);
   document.getElementById('rbar').classList.remove('show');
 }
-
 function setConn(s) {
-  const p = document.getElementById('pill');
-  p.className = 'pill ' + s;
+  document.getElementById('pill').className = 'pill ' + s;
   document.getElementById('pillTxt').textContent = s.toUpperCase();
 }
 
 // ── message router ────────────────────────────────────────────────────────────
 function handle(d) {
+  // Any response carrying a msg field shows a 2-second pop-up
+  if (d.msg) showToast(d.msg);
+
   switch(d.type) {
-    case 'sensor_data':  updSensors(d); break;
-    case 'power_data':   updPower(d);   break;
-    case 'gsm_info':     updGSM(d);     break;
-    case 'gsm_response': appendAT(d.response); break;
-    case 'gsm_test':     updTest(d);    break;
-    case 'lora_result':  updLora(d);    break;
-    case 'system_info':  updSys(d);     break;
+    case 'sensor_broadcast': updSensors(d);     break;
+    case 'sensor_state':     updSensorState(d); break;
+    case 'system_info':      updSys(d);         break;
+    case 'save_tid':         updSaveTid(d);     break;
+    case 'battery_status':   updBattery(d);     break;
+    case 'solar_status':     updSolar(d);       break;
+    case 'system_power':     updSystemPower(d); break;
+    case 'gsm_info':         updGSM(d);         break;
+    case 'gsm_response':     appendAT(d.response); break;
+    case 'gsm_test':         updTest(d);        break;
+    case 'lora_result':      updLora(d);        break;
   }
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-function bdg(id, valid, enabled) {
+function bdg(id, valid, state) {
   const e = document.getElementById(id);
-  if (!enabled)     { e.className = 'badge b-off'; e.textContent = 'OFF'; }
-  else if (valid)   { e.className = 'badge b-ok';  e.textContent = 'OK';  }
-  else              { e.className = 'badge b-err'; e.textContent = 'ERR'; }
+  if (!state)     { e.className = 'badge b-off'; e.textContent = 'OFF'; }
+  else if (valid) { e.className = 'badge b-ok';  e.textContent = 'OK';  }
+  else            { e.className = 'badge b-err'; e.textContent = 'ERR'; }
 }
 
 function setVal(id, v, digits, unitHtml) {
@@ -620,113 +637,138 @@ function setVal(id, v, digits, unitHtml) {
     : (typeof v === 'number' ? v.toFixed(digits) : v) + u;
 }
 
-// ── sensor update ─────────────────────────────────────────────────────────────
+function setText(id, v) {
+  const e = document.getElementById(id); if (e) e.textContent = v ?? '—';
+}
+
+// ── sensor_broadcast ──────────────────────────────────────────────────────────
 function updSensors(d) {
   if (d.dht22) {
-    bdg('bd-dht', d.dht22.valid, d.dht22.enabled);
+    bdg('bd-dht', d.dht22.valid, d.dht22.state);
     setVal('v-dht-t', d.dht22.temperature, 1, '<span class="unit">°C</span>');
     setVal('v-dht-h', d.dht22.humidity,    1, '<span class="unit">%</span>');
   }
   if (d.bh1750) {
-    bdg('bd-bh', d.bh1750.valid, d.bh1750.enabled);
-    setVal('v-bh-l', d.bh1750.illuminance, 1, '<span class="unit">lux</span>');
+    bdg('bd-bh', d.bh1750.valid, d.bh1750.state);
+    setVal('v-bh-l', d.bh1750.illuminance, 2, '<span class="unit">lux</span>');
   }
   if (d.bmp180) {
-    bdg('bd-bmp', d.bmp180.valid, d.bmp180.enabled);
+    bdg('bd-bmp', d.bmp180.valid, d.bmp180.state);
     setVal('v-bmp-t', d.bmp180.temperature, 1, '<span class="unit">°C</span>');
-    setVal('v-bmp-p', d.bmp180.pressure,    1, '<span class="unit">hPa</span>');
+    setVal('v-bmp-p', d.bmp180.pressure,    2, '<span class="unit">hPa</span>');
   }
-  if (d.soil) {
-    bdg('bd-soil', d.soil.valid, d.soil.enabled);
-    setVal('v-soil-p', d.soil.percent, 1, '<span class="unit">%</span>');
-    document.getElementById('v-soil-r').textContent = d.soil.raw ?? '—';
+  if (d.soil_moisture) {
+    bdg('bd-soil', d.soil_moisture.valid, d.soil_moisture.state);
+    setVal('v-soil-p', d.soil_moisture.percentage, 2, '<span class="unit">%</span>');
+    setText('v-soil-r', d.soil_moisture.raw);
   }
   if (d.mpu6050) {
-    bdg('bd-mpu', d.mpu6050.valid, d.mpu6050.enabled);
-    setVal('v-ax', d.mpu6050.ax, 2, '<span class="unit">g</span>');
-    setVal('v-ay', d.mpu6050.ay, 2, '<span class="unit">g</span>');
-    setVal('v-az', d.mpu6050.az, 2, '<span class="unit">g</span>');
-    setVal('v-gx', d.mpu6050.gx, 2, '<span class="unit">°/s</span>');
-    setVal('v-gy', d.mpu6050.gy, 2, '<span class="unit">°/s</span>');
-    setVal('v-gz', d.mpu6050.gz, 2, '<span class="unit">°/s</span>');
-    // ★ NEW: movement count
-    const mc = document.getElementById('v-mpu-mc');
-    mc.textContent = (d.mpu6050.movement_count !== undefined && d.mpu6050.movement_count !== null)
-      ? d.mpu6050.movement_count
-      : '—';
-    // ★ NEW: calibration result (only when response carries it)
+    bdg('bd-mpu', d.mpu6050.valid, d.mpu6050.state);
+    if (d.mpu6050.acceleration) {
+      setVal('v-ax', d.mpu6050.acceleration.x, 3, '<span class="unit">m/s²</span>');
+      setVal('v-ay', d.mpu6050.acceleration.y, 3, '<span class="unit">m/s²</span>');
+      setVal('v-az', d.mpu6050.acceleration.z, 3, '<span class="unit">m/s²</span>');
+    }
+    if (d.mpu6050.gyroscope) {
+      setVal('v-gx', d.mpu6050.gyroscope.x, 3, '<span class="unit">°/s</span>');
+      setVal('v-gy', d.mpu6050.gyroscope.y, 3, '<span class="unit">°/s</span>');
+      setVal('v-gz', d.mpu6050.gyroscope.z, 3, '<span class="unit">°/s</span>');
+    }
+    setText('v-mpu-mc', d.mpu6050.movement_count);
+    // calibration result — only present after mpu_calibrate
     if (d.mpu6050.calibrated !== undefined) {
       const cr = document.getElementById('mpu-cal-result');
-      if (d.mpu6050.calibrated) {
-        cr.textContent = 'Calibration done. Offsets applied.';
-        cr.className = 'cal-result ok';
-      } else {
-        cr.textContent = 'Calibration failed — check sensor connection.';
-        cr.className = 'cal-result fail';
-      }
+      cr.textContent = d.mpu6050.calibrated
+        ? 'Calibration done. Offsets applied.'
+        : 'Calibration failed — check sensor connection.';
+      cr.className = 'cal-result ' + (d.mpu6050.calibrated ? 'ok' : 'fail');
     }
   }
-  if (d.rain) {
-    bdg('bd-rain', d.rain.valid, d.rain.enabled);
-    document.getElementById('v-rain-t').textContent = d.rain.tips ?? '—';
-    setVal('v-rain-m', d.rain.mm, 2, '<span class="unit">mm</span>');
+  if (d.rain_gauge) {
+    bdg('bd-rain', d.rain_gauge.valid, d.rain_gauge.state);
+    setText('v-rain-t', d.rain_gauge.tip_count);
+    setVal('v-rain-m', d.rain_gauge.rainfall_mm, 2, '<span class="unit">mm</span>');
   }
 }
 
-// ── power update ──────────────────────────────────────────────────────────────
-function updPower(d) {
-  if (d.solar) {
-    setVal('sv', d.solar.voltage,           2, '<span class="pu"> V</span>');
-    setVal('si', d.solar.current,           1, '<span class="pu"> mA</span>');
-    setVal('sp', d.solar.power / 1000,      2, '<span class="pu"> W</span>');
-    setVal('se', d.solar.energy_wh,         3, '<span class="pu"> Wh</span>');
-  }
-  if (d.battery) {
-    setVal('bv', d.battery.voltage,         2, '<span class="pu"> V</span>');
-    setVal('bi', d.battery.current,         1, '<span class="pu"> mA</span>');
-    setVal('bp', d.battery.power / 1000,    2, '<span class="pu"> W</span>');
-    setVal('be', d.battery.energy_wh,       3, '<span class="pu"> Wh</span>');
-    // Battery % (estimated from voltage: 3.0V=0%, 4.2V=100%)
-    const pct  = d.battery.percent ?? Math.min(100, Math.max(0, ((d.battery.voltage - 3.0) / 1.2) * 100));
-    const pctR = Math.round(pct);
+// ── sensor_state (toggle ack) ─────────────────────────────────────────────────
+function updSensorState(d) {
+  const badgeMap = { BMP180:'bd-bmp', BH1750:'bd-bh', DHT22:'bd-dht', MPU6050:'bd-mpu', SoilMoisture:'bd-soil', RainGauge:'bd-rain' };
+  const tglMap   = { BMP180:'tgl-bmp', BH1750:'tgl-bh', DHT22:'tgl-dht', MPU6050:'tgl-mpu', SoilMoisture:'tgl-soil', RainGauge:'tgl-rain' };
+  const e = document.getElementById(badgeMap[d.sensor]); if (!e) return;
+  if (d.state) { e.className = 'badge b-wait'; e.textContent = 'WAIT'; }
+  else         { e.className = 'badge b-off';  e.textContent = 'OFF';  }
+  const tgl = document.getElementById(tglMap[d.sensor]);
+  if (tgl) tgl.checked = !!d.state;
+}
+
+// ── battery_status ────────────────────────────────────────────────────────────
+function updBattery(d) {
+  setVal('bv', d.voltage,   2, '<span class="pu"> V</span>');
+  setVal('bi', d.current,   3, '<span class="pu"> A</span>');
+  setVal('bp', d.power_mw,  2, '<span class="pu"> mW</span>');
+  setVal('be', d.energy_wh, 3, '<span class="pu"> Wh</span>');
+  const chgEl = document.getElementById('b-chg');
+  if (chgEl) chgEl.textContent = (d.charging !== undefined) ? (d.charging ? 'YES' : 'NO') : '—';
+  if (d.percent !== undefined) {
+    const pctR = Math.round(d.percent);
     const bdgEl = document.getElementById('bat-pct-badge');
     const barEl = document.getElementById('bat-bar');
     bdgEl.textContent = pctR + '%';
     bdgEl.className   = 'badge ' + (pctR < 20 ? 'b-err' : pctR < 50 ? 'b-wait' : 'b-ok');
     barEl.style.width  = pctR + '%';
     barEl.className    = 'bat-bar-fill ' + (pctR < 20 ? 'low' : pctR < 50 ? 'mid' : '');
-    if (d.battery.charge_time_min !== undefined) {
-      const m = d.battery.charge_time_min;
-      document.getElementById('bat-charge-time').textContent =
-        m < 60 ? m + 'm' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
-    }
-  }
-  if (d.system) {
-    const map = {
-      SOLAR_ONLY:           ['Solar Only',     'st-sol'],
-      BATTERY_DISCHARGING:  ['Battery',        'st-bat'],
-      HYBRID:               ['Solar + Battery','st-hyb'],
-      IDLE:                 ['Idle',           'st-idl']
-    };
-    const [lbl, cls] = map[d.system.state] || ['Unknown', 'st-idl'];
-    document.getElementById('sys-state').innerHTML = `<span class="state-badge ${cls}">${lbl}</span>`;
-    setVal('sys-load', d.system.load_power / 1000, 2, ' W');
-    if (d.system.energy_wh !== undefined) setVal('sys-energy', d.system.energy_wh, 3, ' Wh');
   }
 }
 
-// ── GSM update ────────────────────────────────────────────────────────────────
+// ── solar_status ──────────────────────────────────────────────────────────────
+function updSolar(d) {
+  setVal('sv', d.voltage,   2, '<span class="pu"> V</span>');
+  setVal('si', d.current,   3, '<span class="pu"> A</span>');
+  setVal('sp', d.power_mw,  2, '<span class="pu"> mW</span>');
+  setVal('se', d.energy_wh, 3, '<span class="pu"> Wh</span>');
+}
+
+// ── system_power ──────────────────────────────────────────────────────────────
+function updSystemPower(d) {
+  setText('sys-source', d.source);
+  setVal('sys-pwr-v', d.voltage,   2);
+  setVal('sys-pwr-i', d.current,   3);
+  setVal('sys-pwr-p', d.power_mw,  2);
+  setVal('sys-pwr-e', d.energy_wh, 3);
+}
+
+// ── system_info ───────────────────────────────────────────────────────────────
+function updSys(d) {
+  if (d.uptime_s  !== undefined) setText('sys-up',   fmtUptime(d.uptime_s));
+  if (d.free_heap !== undefined) setText('sys-heap', (d.free_heap / 1024).toFixed(1) + ' KB');
+  if (d.tid !== undefined)       setText('sys-tid',  d.tid || '(not set)');
+  if (d.mac !== undefined)       setText('sys-mac',  d.mac);
+}
+
+// ── save_tid ack ──────────────────────────────────────────────────────────────
+function updSaveTid(d) {
+  // Update the displayed TID in system info immediately
+  if (d.tid !== undefined) setText('sys-tid', d.tid);
+}
+
+function fmtUptime(s) {
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  return `${h}h ${m}m ${ss}s`;
+}
+
+// ── GSM ───────────────────────────────────────────────────────────────────────
 function updGSM(d) {
   const b = document.getElementById('bd-gsm');
   if (d.registered) { b.className = 'badge b-ok';  b.textContent = 'OK';     }
   else              { b.className = 'badge b-err'; b.textContent = 'NO NET'; }
-  document.getElementById('gsm-sim').textContent = d.sim_status || '—';
-  document.getElementById('gsm-op').textContent  = d.operator   || '—';
-  document.getElementById('gsm-num').textContent = d.sim_number || '—';
-  document.getElementById('gsm-ip').textContent  = d.ip         || '—';
-  if (d.voltage !== undefined) document.getElementById('gsm-v').textContent = d.voltage.toFixed(2);
+  setText('gsm-sim', d.sim_status);
+  setText('gsm-op',  d.operator);
+  setText('gsm-num', d.sim_number);
+  setText('gsm-ip',  d.ip);
+  if (d.voltage !== undefined) setText('gsm-v', d.voltage.toFixed(2));
   const rssi = d.rssi ?? 0;
-  document.getElementById('gsm-rssi').textContent = rssi;
+  setText('gsm-rssi', rssi);
   [['sb1',2],['sb2',8],['sb3',14],['sb4',20],['sb5',26]].forEach(([id,t]) => {
     document.getElementById(id).classList.toggle('on', rssi >= t);
   });
@@ -734,11 +776,9 @@ function updGSM(d) {
 
 function appendAT(txt) {
   const term = document.getElementById('term');
-  const d = document.createElement('div');
-  d.className = 't-rx';
-  d.textContent = (txt || '').trim();
-  term.appendChild(d);
-  term.scrollTop = term.scrollHeight;
+  const el = document.createElement('div');
+  el.className = 't-rx'; el.textContent = (txt || '').trim();
+  term.appendChild(el); term.scrollTop = term.scrollHeight;
 }
 
 function updTest(d) {
@@ -752,42 +792,29 @@ function updLora(d) {
   const b = document.getElementById('bd-lora');
   if (d.sent) {
     e.textContent = 'Packet sent. Hooter should activate within 2s.';
-    e.className   = 'result ok';
-    b.className   = 'badge b-ok';
-    b.textContent = 'OK';
+    e.className = 'result ok'; b.className = 'badge b-ok'; b.textContent = 'OK';
   } else {
     e.textContent = 'Send failed — check LoRa wiring / hooter power.';
-    e.className   = 'result fail';
-    b.className   = 'badge b-err';
-    b.textContent = 'ERR';
+    e.className = 'result fail'; b.className = 'badge b-err'; b.textContent = 'ERR';
   }
 }
 
-function updSys(d) {
-  if (d.uptime  !== undefined) document.getElementById('sys-up').textContent   = fmtUptime(d.uptime);
-  if (d.heap    !== undefined) document.getElementById('sys-heap').textContent = (d.heap / 1024).toFixed(1) + ' KB';
-  if (d.clients !== undefined) document.getElementById('sys-cli').textContent  = d.clients;
-}
-
-function fmtUptime(s) {
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
-  return `${h}h ${m}m ${ss}s`;
-}
-
 // ── actions ───────────────────────────────────────────────────────────────────
-function readSensors()  { ws_send({ cmd: 'sensor_read' }); }
-function readPower()    { ws_send({ cmd: 'power_read'  }); }
-function refreshGSM()   { ws_send({ cmd: 'gsm_info'    }); }
+function readSensors()    { ws_send({ type: 'sensor_broadcast' }); }
+function readBattery()    { ws_send({ type: 'battery_status'   }); }
+function readSolar()      { ws_send({ type: 'solar_status'     }); }
+function readSystemPower(){ ws_send({ type: 'system_power'     }); }
+function refreshGSM()     { ws_send({ type: 'gsm_info'         }); }
 
 function toggleSensor(name, on) {
-  ws_send({ cmd: 'sensor_toggle', sensor: name, state: on ? 'on' : 'off' });
+  ws_send({ type: 'sensor_state', sensor: name, state: on });
 }
 
 function toggleAuto() {
   autoOn = !autoOn;
   document.getElementById('autoBtn').textContent = 'Auto: ' + (autoOn ? 'ON' : 'OFF');
   if (autoOn) {
-    autoTimer = setInterval(() => { readSensors(); readPower(); }, AUTO_MS);
+    autoTimer = setInterval(() => { readSensors(); readBattery(); readSolar(); readSystemPower(); }, AUTO_MS);
   } else {
     clearInterval(autoTimer);
   }
@@ -796,45 +823,52 @@ function toggleAuto() {
 function triggerHooter() {
   document.getElementById('lora-result').textContent = 'Sending LoRa packet…';
   document.getElementById('lora-result').className   = 'result';
-  ws_send({ cmd: 'lora_trigger', value: 1 });
+  ws_send({ type: 'lora_trigger', value: 1 });
 }
 
 function gsmTest(t) {
   document.getElementById('gsm-result').textContent = 'Running ' + t + ' test…';
   document.getElementById('gsm-result').className   = 'result';
-  ws_send({ cmd: 'gsm_test', test: t });
+  ws_send({ type: 'gsm_test', test: t });
 }
 
-function resetGSM() { ws_send({ cmd: 'gsm_reset' }); }
+function resetGSM() { ws_send({ type: 'gsm_reset' }); }
 
 function setAPN() {
   const apn = document.getElementById('opSelect').value;
-  ws_send({ cmd: 'gsm_at', command: `AT+CGDCONT=1,"IP","${apn}"` });
+  ws_send({ type: 'gsm_at', command: `AT+CGDCONT=1,"IP","${apn}"` });
 }
 
 function sendAT() {
   const inp = document.getElementById('atIn');
   const cmd = inp.value.trim(); if (!cmd) return;
   const term = document.getElementById('term');
-  const d = document.createElement('div'); d.className = 't-tx'; d.textContent = '> ' + cmd;
-  term.appendChild(d); term.scrollTop = term.scrollHeight;
-  ws_send({ cmd: 'gsm_at', command: cmd });
+  const el = document.createElement('div'); el.className = 't-tx'; el.textContent = '> ' + cmd;
+  term.appendChild(el); term.scrollTop = term.scrollHeight;
+  ws_send({ type: 'gsm_at', command: cmd });
   inp.value = '';
 }
 
 function qat(cmd) { document.getElementById('atIn').value = cmd; sendAT(); }
 
-// ★ NEW: Reset movement count
-function resetMovement() {
-  ws_send({ cmd: 'mpu_reset' });
-}
+function resetRain() { ws_send({ type: 'rain_reset' }); }
 
-// ★ NEW: Calibrate MPU6050
+function resetMovement() { ws_send({ type: 'mpu_reset' }); }
+
 function calibrateMPU() {
   const cr = document.getElementById('mpu-cal-result');
   cr.textContent = 'Calibrating… keep device level and still.';
   cr.className   = 'cal-result';
-  ws_send({ cmd: 'mpu_calibrate' });
+  ws_send({ type: 'mpu_calibrate' });
+}
+
+// Save TID — sends { type: 'save_tid', tid: '<value>' }
+function saveTID() {
+  const inp = document.getElementById('tidInput');
+  const tid = inp.value.trim();
+  if (!tid) { showToast('Enter a TID first'); return; }
+  ws_send({ type: 'save_tid', tid: tid });
+  inp.value = '';
 }
 
 connect();
