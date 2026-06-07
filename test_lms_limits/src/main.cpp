@@ -25,20 +25,22 @@ void setup() {
     
     Serial.println("\n=== LANDSLIDE MONITORING SYSTEM ===");
     Serial.println(F("Initializing Sensor Manager..."));
-    
+
+    gsmSerial.begin(MODEM_BAUD_RATE, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
+
+    cmdHandler.begin();
+
     if (sensorManager.initialize()) {
         Serial.println(F("[MAIN] Sensor initialized"));
         sensorManager.printSensorStatus();
+        cmdHandler.configSensors();
     } else {
         Serial.println(F("[MAIN] Sensor initialization failed"));
     }
 
-    gsmSerial.begin(MODEM_BAUD_RATE, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
-
     // setupLoRa();
     // sendLoraAlaram_old();
 
-    cmdHandler.begin();
 }
 
 // ─── Loop ─────────────────────────────────────────────────────────────────────

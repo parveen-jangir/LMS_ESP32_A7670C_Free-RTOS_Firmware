@@ -88,6 +88,10 @@
 #define GSM_TASK_PRIORITY         6
 #define GSM_TASK_CORE             1    // Core 1 for GSM tasks
 
+#define API_TASK_STACK_SIZE       4096
+#define API_TASK_PRIORITY         5
+#define API_TASK_CORE             1    // Core 1 for API tasks
+
 // ==================== A7670C Configuration ====================
 #define CFG_APN         "airtelgprs.com"      // Your carrier APN
 #define CFG_SMS_NUMBER  "+919511511257"    // Number for SMS/call tests

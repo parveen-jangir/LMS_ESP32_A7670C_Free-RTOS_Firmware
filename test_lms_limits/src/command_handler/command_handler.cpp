@@ -118,10 +118,17 @@ void CommandHandler::begin()
         GSM_TASK_STACK_SIZE, 
         this, 
         GSM_TASK_PRIORITY, 
-        &workerHandle
+        nullptr
     );
 
-    configSensors();
+    xTaskCreate(
+        apiTask, 
+        "ApiWorker", 
+        API_TASK_STACK_SIZE, 
+        this, 
+        API_TASK_PRIORITY, 
+        nullptr
+    );
 
     modem.onMqttMessage(mqttCallback);
     modem.onSms(onSmsReceived);
@@ -192,7 +199,7 @@ void CommandHandler::gsmTask(void *param)
     while (true)
     {
         self->modem.loop();
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(70));
     }
     vTaskDelete(nullptr);
 }
@@ -213,6 +220,16 @@ void CommandHandler::workerLoop()
         }
         vTaskDelay(pdMS_TO_TICKS(COMMAND_TASK_DELAY_MS));
     }
+}
+
+void CommandHandler::apiTask(void *param)
+{
+    CommandHandler *self = static_cast<CommandHandler *>(param);
+    while (true)
+    {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+    vTaskDelete(nullptr);
 }
 
 void CommandHandler::dispatch(const commandFormat &pkt)

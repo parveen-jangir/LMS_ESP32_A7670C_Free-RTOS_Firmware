@@ -36,6 +36,7 @@ public:
 
     void begin();
 
+    void configSensors();
 private:
     SensorManager &sensorMgr;
     StorageManager &storageMgr;
@@ -50,10 +51,10 @@ private:
 
     static void workerTask(void *param);
     static void gsmTask(void *param);
+    static void apiTask(void *param);
     
     void        workerLoop();
 
-    void configSensors();
 
      // ── Command handlers ─────────────────────────────────────────────────────
 
