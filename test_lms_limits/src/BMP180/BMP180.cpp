@@ -6,7 +6,7 @@ BMP180Sensor::BMP180Sensor()
     
     // Create Adafruit BMP085 instance
     bmp = new Adafruit_BMP085();
-    lastReading = {0.0F, 0.0F, false, 0};
+    lastReading = {0, 0, 0, false, 0};
 }
 
 BMP180Sensor::~BMP180Sensor() {
@@ -25,14 +25,14 @@ bool BMP180Sensor::initialize() {
     
     // Initialize BMP085/180 sensor
     if (!bmp->begin()) {
-        if (DEBUG_ENABLED) Serial.println(F("[BMP180] Sensor initialization failed!"));
+        if (DEBUG_ENABLED) Serial.println("[BMP180] Sensor initialization failed!");
         return false;
     }
     
     isInitialized = true;
     lastReading.isValid = true;
     
-    if (DEBUG_ENABLED) Serial.println(F("[BMP180] Initialized successfully"));
+    if (DEBUG_ENABLED) Serial.println("[BMP180] Initialized successfully");
     return true;
 }
 
@@ -43,6 +43,7 @@ bool BMP180Sensor::readSensor() {
         return false;
     }
     
+    lastReading.timestamp = millis();
     
     try {
         // Read temperature
@@ -56,7 +57,7 @@ bool BMP180Sensor::readSensor() {
         if (temperature == 0 && pressure == 0) {
             lastReading.errorCount++;
             lastReading.isValid = false;
-            if (DEBUG_ENABLED) Serial.println(F("[BMP180] Invalid sensor readings"));
+            if (DEBUG_ENABLED) Serial.println("[BMP180] Invalid sensor readings");
             return false;
         }
         
@@ -72,7 +73,7 @@ bool BMP180Sensor::readSensor() {
     catch (...) {
         lastReading.errorCount++;
         lastReading.isValid = false;
-        if (DEBUG_ENABLED) Serial.println(F("[BMP180] Exception during sensor read"));
+        if (DEBUG_ENABLED) Serial.println("[BMP180] Exception during sensor read");
         return false;
     }
 }

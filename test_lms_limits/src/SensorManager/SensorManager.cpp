@@ -8,8 +8,8 @@ SensorManager::SensorManager()
     
     // Create sensor instances
     bmp180 = new BMP180Sensor();
-    bh1750 = new BH1750Sensor();
-    mpu6050 = new IMU6050Sensor(&Wire);
+    bh1750 = new BH1750Sensor(&Wire);
+    mpu6050 = new MPU6050Sensor(&Wire);
     dht22 = new DHT22Sensor(DHT22_PIN);
     soilMoisture = new SoilMoistureSensor(SOIL_MOISTURE_PIN);
     rainGauge = new RainGaugeSensor(RAIN_GAUGE_PIN);
@@ -30,8 +30,8 @@ SensorManager::SensorManager()
     calibration.mpu6050TempOffset = 0.0;
     calibration.dht22TempOffset = 0.0;
     calibration.dht22HumidityOffset = 0.0;
-    calibration.soilMoistureOffsetMin = 1167.0;
-    calibration.soilMoistureOffsetMax = 2582.0;
+    calibration.soilMoistureOffsetMin = 0.0;
+    calibration.soilMoistureOffsetMax = 4095.0;
     calibration.rainGaugeTipVolume = 0.2794;
 }
 
@@ -195,62 +195,115 @@ AllSensorReadings SensorManager::getAllReadings() {
     return readings;
 }
 
-void SensorManager::enableSensor(const char* sensorName) {
+bool SensorManager::getAllReadingsJson(JsonDocument &doc)
+{
+    AllSensorReadings readings = getAllReadings();
+
+    doc["type"] = "sensor_broadcast";
+    doc["timestamp"] = readings.readTimestamp;
+    doc["status"] = "ok";
+    doc["message"] = "Sensor readings broadcast";
+
+    // BMP180
+    JsonObject bmp180 = doc["bmp180"].to<JsonObject>();
+    bmp180["temperature"] = readings.bmp180.temperature;
+    bmp180["pressure"]    = readings.bmp180.pressure;
+    bmp180["valid"]       = readings.bmp180.isValid;
+    bmp180["timestamp"]   = readings.bmp180.timestamp;
+    bmp180["state"]       = bool(bmp180Enabled); // true if valid, false if error
+
+    // BH1750
+    JsonObject bh1750 = doc["bh1750"].to<JsonObject>();
+    bh1750["illuminance"]       = readings.bh1750.illuminance;
+    bh1750["valid"]     = readings.bh1750.isValid;
+    bh1750["timestamp"] = readings.bh1750.timestamp;
+    bh1750["state"]     = bool(bh1750Enabled); // true if valid, false if error
+
+    // MPU6050
+    JsonObject mpu = doc["mpu6050"].to<JsonObject>();
+
+    JsonObject accel = mpu["acceleration"].to<JsonObject>();
+    accel["x"] = readings.mpu6050.accelX;
+    accel["y"] = readings.mpu6050.accelY;
+    accel["z"] = readings.mpu6050.accelZ;
+
+    JsonObject gyro = mpu["gyroscope"].to<JsonObject>();
+    gyro["x"] = readings.mpu6050.gyroX;
+    gyro["y"] = readings.mpu6050.gyroY;
+    gyro["z"] = readings.mpu6050.gyroZ;
+
+    mpu["temperature"] = readings.mpu6050.temperature;
+    mpu["valid"]       = readings.mpu6050.isValid;
+    mpu["timestamp"]   = readings.mpu6050.timestamp;
+    mpu["state"]       = bool(mpu6050Enabled); // true if valid, false if error
+    // DHT22
+    JsonObject dht22 = doc["dht22"].to<JsonObject>();
+    dht22["temperature"] = readings.dht22.temperature;
+    dht22["humidity"]    = readings.dht22.humidity;
+    dht22["valid"]       = readings.dht22.isValid;
+    dht22["timestamp"]   = readings.dht22.timestamp;
+    dht22["state"]       = bool(dht22Enabled); // true if valid, false if error
+
+    // Soil Moisture
+    JsonObject soil = doc["soil_moisture"].to<JsonObject>();
+    soil["raw"]        = readings.soilMoisture.rawValue;
+    soil["percentage"] = readings.soilMoisture.percentage;
+    soil["valid"]      = readings.soilMoisture.isValid;
+    soil["timestamp"]  = readings.soilMoisture.timestamp;
+    soil["state"]      = bool(soilMoistureEnabled); // true if valid, false if error
+
+    // Rain Gauge
+    JsonObject rain = doc["rain_gauge"].to<JsonObject>();
+    rain["tip_count"]      = readings.rainGauge.tipCount;
+    rain["rainfall_mm"]    = readings.rainGauge.totalRainfall;
+    rain["last_tip_time"]  = readings.rainGauge.lastTipTime;
+    rain["valid"]          = readings.rainGauge.isValid;
+    rain["timestamp"]      = readings.rainGauge.timestamp;
+    rain["state"]          = bool(rainGaugeEnabled); // true if valid, false if error
+
+    return true;
+}
+
+void SensorManager::sensorState(const char* sensorName, bool state) {
     if (strcmp(sensorName, "BMP180") == 0) {
-        bmp180Enabled = true;
-        if (bmp180) bmp180->enable();
+        bmp180Enabled = state;
+        if (bmp180)
+        {
+            state ? bmp180->enable() : bmp180->disable();
+        }
     }
     else if (strcmp(sensorName, "BH1750") == 0) {
-        bh1750Enabled = true;
-        if (bh1750) bh1750->enable();
+        bh1750Enabled = state;
+        if (bh1750) {
+            state ? bh1750->enable() : bh1750->disable();
+        }
     }
     else if (strcmp(sensorName, "MPU6050") == 0) {
-        mpu6050Enabled = true;
-        if (mpu6050) mpu6050->enable();
+        mpu6050Enabled = state;
+        if (mpu6050) {
+            state ? mpu6050->enable() : mpu6050->disable();
+        }
     }
     else if (strcmp(sensorName, "DHT22") == 0) {
-        dht22Enabled = true;
-        if (dht22) dht22->enable();
+        dht22Enabled = state;
+        if (dht22) {
+            state ? dht22->enable() : dht22->disable();
+        }
     }
     else if (strcmp(sensorName, "SoilMoisture") == 0) {
-        soilMoistureEnabled = true;
-        if (soilMoisture) soilMoisture->enable();
+        soilMoistureEnabled = state;
+        if (soilMoisture) {
+            state ? soilMoisture->enable() : soilMoisture->disable();
+        }
     }
     else if (strcmp(sensorName, "RainGauge") == 0) {
-        rainGaugeEnabled = true;
-        if (rainGauge) rainGauge->enable();
+        rainGaugeEnabled = state;
+        if (rainGauge) {
+            state ? rainGauge->enable() : rainGauge->disable();
+        }
     }
     
     if (DEBUG_ENABLED) Serial.printf("[SensorManager] Enabled: %s\n", sensorName);
-}
-
-void SensorManager::disableSensor(const char* sensorName) {
-    if (strcmp(sensorName, "BMP180") == 0) {
-        bmp180Enabled = false;
-        if (bmp180) bmp180->disable();
-    }
-    else if (strcmp(sensorName, "BH1750") == 0) {
-        bh1750Enabled = false;
-        if (bh1750) bh1750->disable();
-    }
-    else if (strcmp(sensorName, "MPU6050") == 0) {
-        mpu6050Enabled = false;
-        if (mpu6050) mpu6050->disable();
-    }
-    else if (strcmp(sensorName, "DHT22") == 0) {
-        dht22Enabled = false;
-        if (dht22) dht22->disable();
-    }
-    else if (strcmp(sensorName, "SoilMoisture") == 0) {
-        soilMoistureEnabled = false;
-        if (soilMoisture) soilMoisture->disable();
-    }
-    else if (strcmp(sensorName, "RainGauge") == 0) {
-        rainGaugeEnabled = false;
-        if (rainGauge) rainGauge->disable();
-    }
-    
-    if (DEBUG_ENABLED) Serial.printf("[SensorManager] Disabled: %s\n", sensorName);
 }
 
 bool SensorManager::isSensorEnabled(const char* sensorName) const {

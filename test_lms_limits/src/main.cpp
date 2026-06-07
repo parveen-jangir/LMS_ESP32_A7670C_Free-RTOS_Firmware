@@ -26,12 +26,12 @@ void setup() {
     Serial.println("\n=== LANDSLIDE MONITORING SYSTEM ===");
     Serial.println(F("Initializing Sensor Manager..."));
     
-    // if (sensorManager.initialize()) {
-    //     Serial.println(F("[MAIN] Sensor initialized"));
-    //     sensorManager.printSensorStatus();
-    // } else {
-    //     Serial.println(F("[MAIN] Sensor initialization failed"));
-    // }
+    if (sensorManager.initialize()) {
+        Serial.println(F("[MAIN] Sensor initialized"));
+        sensorManager.printSensorStatus();
+    } else {
+        Serial.println(F("[MAIN] Sensor initialization failed"));
+    }
 
     gsmSerial.begin(MODEM_BAUD_RATE, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
 

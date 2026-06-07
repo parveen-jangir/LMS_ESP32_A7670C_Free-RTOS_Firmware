@@ -23,8 +23,7 @@
 #define SENSOR_OFF        0
 
 // ==================== Sampling Configuration ====================
-#define SENSOR_READ_INTERVAL_MS  5000  // Read all sensors every 5 seconds
-#define DHT22_READ_INTERVAL_MS   2000  // DHT22 needs ~2s between reads
+#define SENSOR_READ_INTERVAL_MS  1000  // Read all sensors every 1 second
 #define RAIN_GAUGE_DEBOUNCE_MS   100   // Debounce for rain gauge
 
 // ==================== ADC Configuration ====================
@@ -63,7 +62,7 @@
 #define LORA_NSS_PIN              5      // LoRa NSS pin
 #define LORA_RESET_PIN            25     // LoRa reset pin
 #define LORA_DIO0_PIN             26     // LoRa DIO0 pin
-#define MAX_PAYLOAD_LEN         512
+#define MAX_PAYLOAD_LEN         1024
 
 // ==================== A7670C Modem Configuration ====================
 #define GSM_SERIAL Serial2

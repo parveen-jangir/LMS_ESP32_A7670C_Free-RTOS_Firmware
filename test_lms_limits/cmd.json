@@ -14,7 +14,7 @@
     },
     {
         "type": "ping",
-        "status": true
+        "status": "ok"
     },
     {
         "type": "sensor_state",
@@ -25,7 +25,7 @@
         "type": "sensor_state",
         "sensor": "BMP180",
         "state": false,
-        "status": true,
+        "status": "ok",
         "msg": "BMP180 disabled"
     },
     {
@@ -33,63 +33,69 @@
     },
     {
         "type": "sensor_broadcast",
+        "timestamp": 56296,
+        "status": "ok",
+        "message": "Sensor readings broadcast",
         "bmp180": {
-            "temperature": 26.2,
-            "pressure": 893.92,
-            "state": false,
-            "msg": "BMP180 disabled"
+            "temperature": 23.5,
+            "pressure": 895.45,
+            "valid": true,
+            "timestamp": 56050,
+            "state": true
         },
         "bh1750": {
-            "illuminance": 120.8333,
-            "state": true,
-            "msg": "BH1750 enabled"
+            "illuminance": 15.83333,
+            "valid": true,
+            "timestamp": 56088,
+            "state": true
         },
         "mpu6050": {
             "acceleration": {
-                "x": 0.431104,
-                "y": -8.938213,
-                "z": -6.844966
+                "x": -0.986748,
+                "y": -3.070415,
+                "z": -11.04823
             },
             "gyroscope": {
-                "x": 0.320611,
-                "y": -4.145038,
-                "z": -3.328244
+                "x": 0.480916,
+                "y": -4.08397,
+                "z": -3.091603
             },
-            "temperature": -5565120,
-            "state": true,
-            "msg": "MPU6050 enabled"
+            "temperature": -5788160,
+            "valid": true,
+            "timestamp": 56289,
+            "state": true
         },
         "dht22": {
-            "temperature": 26.3,
-            "humidity": 47.5,
-            "state": true,
-            "msg": "DHT22 enabled"
+            "temperature": 23.7,
+            "humidity": 56.6,
+            "valid": true,
+            "timestamp": 56289,
+            "state": true
         },
         "soil_moisture": {
-            "raw": 0,
-            "percentage": 0,
-            "state": true,
-            "msg": "Soil Moisture enabled"
+            "raw": 3091,
+            "percentage": 75.48229,
+            "valid": true,
+            "timestamp": 56296,
+            "state": true
         },
         "rain_gauge": {
-            "tips": 0,
-            "total_rainfall": 0,
-            "state": true,
-            "msg": "Rain Gauge enabled"
-        },
-        "status": true,
-        "msg": "Sensor data broadcast"
+            "tip_count": 0,
+            "rainfall_mm": 0,
+            "last_tip_time": 0,
+            "valid": true,
+            "timestamp": 56296,
+            "state": true
+        }
     },
     {
         "type": "system_info"
     },
     {
         "type": "system_info",
-        "original_type": "system_info",
-        "uptime_ms": 180499,
-        "free_heap": 221180,
-        "connected_clients": 1,
-        "status": true,
+        "uptime_s": 21,
+        "free_heap": 316348,
+        "status": "ok",
         "msg": "System information retrieved"
     },
     {
@@ -98,10 +104,10 @@
     {
         "type": "battery_status",
         "charging": false,
-        "volage": 3.7,
-        "cuttent": 0.5,
+        "voltage": 3.7,
+        "current": 0.5,
         "power_mw": 1.85,
-        "status": true,
+        "status": "ok",
         "msg": "Battery status retrieved"
     },
     {
@@ -109,10 +115,10 @@
     },
     {
         "type": "solar_status",
-        "volage": 5.0,
+        "voltage": 5.0,
         "current": 0.2,
         "power_mw": 1.0,
-        "status": true,
+        "status": "ok",
         "msg": "Solar panel status retrieved"
     },
     {
@@ -121,10 +127,10 @@
     {
         "type": "system_power",
         "source": "battery",
-        "volage": 3.7,
+        "voltage": 3.7,
         "current": 0.5,
         "power_mw": 1.85,
-        "status": true,
+        "status": "ok",
         "msg": "System power status retrieved"
     }
 ]

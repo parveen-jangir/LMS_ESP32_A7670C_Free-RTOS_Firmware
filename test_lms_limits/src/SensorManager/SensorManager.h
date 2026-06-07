@@ -10,17 +10,18 @@
 #include "SensorData.h"
 #include "BMP180/BMP180.h"
 #include "BH1750/BH1750.h"
-#include "IMU6050/IMU6050.h"
+#include "MPU6050/MPU6050.h"
 #include "DHT22/DHT22.h"
 #include "SoilMoisture/SoilMoisture.h"
 #include "RainGauge/RainGauge.h"
+#include <ArduinoJson.h>
 
 class SensorManager {
 private:
     // Sensor instances
     BMP180Sensor* bmp180;
     BH1750Sensor* bh1750;
-    IMU6050Sensor* mpu6050;
+    MPU6050Sensor* mpu6050;
     DHT22Sensor* dht22;
     SoilMoistureSensor* soilMoisture;
     RainGaugeSensor* rainGauge;
@@ -44,7 +45,6 @@ private:
     // Sensor enable/disable state
     bool bmp180Enabled, bh1750Enabled, mpu6050Enabled;
     bool dht22Enabled, soilMoistureEnabled, rainGaugeEnabled;
-    bool LoRaEnabled = false;
 
 public:
     SensorManager();
@@ -54,13 +54,14 @@ public:
     bool initialize();
     
     // Sensor enable/disable
-    void enableSensor(const char* sensorName);
-    void disableSensor(const char* sensorName);
+    void sensorState(const char* sensorName, bool state);
+    // void disableSensor(const char* sensorName);
     bool isSensorEnabled(const char* sensorName) const;
     
     // Read all sensors
     bool readAllSensors();
     AllSensorReadings getAllReadings();
+    bool getAllReadingsJson(JsonDocument &doc);
     
     // Calibration management
     void setCalibration(const SensorCalibration& cal);

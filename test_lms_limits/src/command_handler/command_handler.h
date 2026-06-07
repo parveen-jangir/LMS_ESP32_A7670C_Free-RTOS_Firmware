@@ -6,6 +6,8 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
+#include <esp_system.h>
+#include <esp_timer.h>
 
 #include "SensorManager/SensorManager.h"
 #include "local_storage/storage_manager.h"
@@ -60,6 +62,10 @@ private:
     void setupMqtt();
     void buildDeviceMac();
     void buildTopic();
+
+    void handleSensorState(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleSensorBroadcast(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    bool getSystemInfo(JsonDocument &doc, bool fromBle, bool fromMqtt);
 
     bool enqueue(const char *jsonStr, size_t len, bool fromBle = false);
 

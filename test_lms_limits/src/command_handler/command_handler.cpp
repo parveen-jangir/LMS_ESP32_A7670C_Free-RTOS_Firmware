@@ -121,7 +121,7 @@ void CommandHandler::begin()
         &workerHandle
     );
 
-    // configSensors();
+    configSensors();
 
     modem.onMqttMessage(mqttCallback);
     modem.onSms(onSmsReceived);
@@ -250,6 +250,27 @@ void CommandHandler::dispatch(const commandFormat &pkt)
         doc["status"] = "ok";
         sendResponse(doc, pkt.formBle, pkt.formMqtt);
     }
+    else if (strcmp(cmdStr, "ping") == 0)
+    {
+        doc["status"] = "ok";
+        sendResponse(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if(strcmp(cmdStr, "sensor_state") == 0)
+    {
+        handleSensorState(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if(strcmp(cmdStr, "sensor_broadcast") == 0)
+    {
+        handleSensorBroadcast(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if(strcmp(cmdStr, "system_info") == 0)
+    {
+        if (!getSystemInfo(doc, pkt.formBle, pkt.formMqtt)) {
+            doc["status"] = "error";
+            doc["error"] = "failed_get_system_info";
+        }
+        sendResponse(doc, pkt.formBle, pkt.formMqtt);
+    }
     else
     {
         Serial.printf("[CMD] dispatch: unknown command '%s'\n", cmdStr);
@@ -267,18 +288,6 @@ void CommandHandler::sendResponse(JsonDocument &response, bool toBle, bool toMqt
     
     if (toBle)
     {
-        // Serialise to a stack buffer and send via BLE notify.
-        // char buf[MAX_PAYLOAD_LEN + 1];
-        // size_t len = serializeJson(response, buf, sizeof(buf));
-        // if (len == 0)
-        // {
-        //     Serial.println(F("[CMD] sendResponse(BLE): serialise failed"));
-        //     return;
-        // }
-        // if (!ble.notifyStr(buf))
-        // {
-        //     Serial.println(F("[CMD] sendResponse(BLE): notify failed"));
-        // }
     }
 
     if (toMqtt)
@@ -329,5 +338,46 @@ void CommandHandler::configSensors()
     }
 
     sensorMgr.printSensorStatus();
+}
+
+void CommandHandler::handleSensorState(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    const char* sensorName = doc["sensor"] | "";
+    bool state = doc["state"] | false;
+
+    if (sensorName[0] == '\0') {
+        Serial.println(F("[CMD][ERROR] incomplete cmd"));
+        JsonDocument errResp;
+        errResp["status"] = "error";
+        errResp["error"] = "missing_sensor_field";
+        sendResponse(errResp, fromBle, fromMqtt);
+        return;
+    }
+
+    sensorMgr.sensorState(sensorName, state);
+
+    doc["status"] = "ok";
+    doc["message"] = String("Sensor '") + sensorName + "' " + (state ? "enabled" : "disabled");
+    sendResponse(doc, fromBle, fromMqtt);
+}
+
+void CommandHandler::handleSensorBroadcast(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    doc.clear();
+
+    sensorMgr.getAllReadingsJson(doc);
+
+    sendResponse(doc, fromBle, fromMqtt);
+}
+
+bool CommandHandler::getSystemInfo(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    doc["uptime_s"]  = esp_timer_get_time() / 1000000ULL;
+    doc["free_heap"] = ESP.getFreeHeap();
+
+    doc["status"] = "ok";
+    doc["msg"]    = "System information retrieved";
+
+    return true;
 }
 

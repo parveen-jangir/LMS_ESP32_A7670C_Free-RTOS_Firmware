@@ -10,8 +10,8 @@ private:
     uint8_t pin;
     SoilMoistureData lastReading;
     bool isInitialized;
-    uint32_t calibrationOffsetMin;  // ADC value at dry (0%)
-    uint32_t calibrationOffsetMax;  // ADC value at wet (100%)
+    float calibrationOffsetMin;  // ADC value at dry (0%)
+    float calibrationOffsetMax;  // ADC value at wet (100%)
 
 public:
     SoilMoistureSensor(uint8_t sensorPin = SOIL_MOISTURE_PIN);
