@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>LMS Field Setup</title>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <style>
 :root {
   --bg:      #0d0f0e;
@@ -85,6 +86,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .rd-val{font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1.2}
 .unit{font-size:12px;color:var(--dim);font-weight:400;margin-left:2px}
 
+/* movement count tile — wider, highlighted */
+.rd-move{background:var(--sf2);border:1px solid rgba(106,180,255,.3);border-radius:4px;padding:10px 12px;grid-column:span 2}
+.rd-move .rd-val{color:var(--info);font-size:26px}
+
 /* buttons */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:var(--r);border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
 .btn:active{transform:translateY(1px)}
@@ -96,10 +101,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .btn-d:hover{background:rgba(255,77,77,.22)}
 .btn-w{background:rgba(255,184,0,.12);color:var(--warn);border:1px solid rgba(255,184,0,.3)}
 .btn-w:hover{background:rgba(255,184,0,.22)}
+.btn-i{background:rgba(106,180,255,.12);color:var(--info);border:1px solid rgba(106,180,255,.3)}
+.btn-i:hover{background:rgba(106,180,255,.22)}
 .btn-big{padding:18px 24px;font-size:16px;width:100%;border-radius:8px}
 .btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .row:last-child{margin-bottom:0}
+
+/* mpu action row */
+.mpu-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 
 /* power */
 .pg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
@@ -152,6 +162,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .result{margin-top:12px;padding:12px 14px;border-radius:var(--r);font-family:var(--mono);font-size:12px;border:1px solid var(--border);background:var(--sf2);min-height:44px;color:var(--dim);line-height:1.5}
 .result.ok{border-color:rgba(0,229,160,.3);color:var(--accent);background:rgba(0,229,160,.05)}
 .result.fail{border-color:rgba(255,77,77,.3);color:var(--danger);background:rgba(255,77,77,.05)}
+
+/* calibrate result box */
+.cal-result{margin-top:10px;padding:10px 14px;border-radius:var(--r);font-family:var(--mono);font-size:12px;border:1px solid var(--border);background:var(--sf2);color:var(--dim);line-height:1.5;min-height:38px}
+.cal-result.ok{border-color:rgba(106,180,255,.3);color:var(--info);background:rgba(106,180,255,.05)}
+.cal-result.fail{border-color:rgba(255,77,77,.3);color:var(--danger);background:rgba(255,77,77,.05)}
 
 /* select */
 .sel{background:var(--sf2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font);font-size:13px;padding:9px 12px;outline:none;width:100%;margin-bottom:8px}
@@ -244,7 +259,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <div class="cbody">
       <div class="rg">
         <div class="rd"><div class="rd-label">Moisture</div><div class="rd-val" id="v-soil-p">—<span class="unit">%</span></div></div>
-        <div class="rd"><div class="rd-label">Raw ADC</div><div class="rd-val" id="v-soil-r">—</div></div>
+        <div class="rd"><div class="rd-label">Raw ADC</div><div class="rd-val" id="v-soil-r">—<span class="unit">mV</span></div></div>
       </div>
     </div>
   </div>
@@ -263,7 +278,19 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
         <div class="rd"><div class="rd-label">Gyro X</div><div class="rd-val" id="v-gx">—<span class="unit">°/s</span></div></div>
         <div class="rd"><div class="rd-label">Gyro Y</div><div class="rd-val" id="v-gy">—<span class="unit">°/s</span></div></div>
         <div class="rd"><div class="rd-label">Gyro Z</div><div class="rd-val" id="v-gz">—<span class="unit">°/s</span></div></div>
+        <!-- ★ NEW: Movement Count tile — spans full width row -->
+        <div class="rd rd-move">
+          <div class="rd-label">Movement Count</div>
+          <div class="rd-val" id="v-mpu-mc">—</div>
+        </div>
       </div>
+      <!-- ★ NEW: MPU action buttons -->
+      <div class="mpu-actions">
+        <button class="btn btn-w" style="padding:7px 13px;font-size:12px" onclick="resetMovement()">Reset Movement Count</button>
+        <button class="btn btn-i" style="padding:7px 13px;font-size:12px" onclick="calibrateMPU()">Calibrate</button>
+      </div>
+      <!-- ★ NEW: Calibration result box -->
+      <div class="cal-result" id="mpu-cal-result">Press Calibrate to zero the MPU offsets. Keep the device level and still.</div>
     </div>
   </div>
 
@@ -468,9 +495,9 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
         <tr><td>ESP32 Uptime</td><td id="sys-up" style="font-family:var(--mono)">—</td></tr>
         <tr><td>Free Heap</td><td id="sys-heap" style="font-family:var(--mono)">—</td></tr>
         <tr><td>WiFi Clients</td><td id="sys-cli" style="font-family:var(--mono)">—</td></tr>
-        <tr><td>WebSocket Port</td><td style="font-family:var(--mono)">81</td></tr>
-        <tr><td>AP IP</td><td style="font-family:var(--mono)">192.168.4.1</td></tr>
-        <tr><td>WiFi SSID</td><td style="font-family:var(--mono)">Engineer</td></tr>
+        <tr><td>MQTT Broker</td><td style="font-family:var(--mono)">76.13.243.127:9001</td></tr>
+        <tr><td>Pub Topic</td><td style="font-family:var(--mono)">lms/commands</td></tr>
+        <tr><td>Sub Topic</td><td style="font-family:var(--mono)">lms/data</td></tr>
       </table>
     </div>
   </div>
@@ -481,194 +508,334 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 ══════════════════════════════════════ -->
 <script>
 'use strict';
-const WS = 'ws://192.168.4.1/ws';
-let ws=null, rTimer=null, rTick=null;
-let autoOn=false, autoTimer=null;
+
+// ── MQTT broker config ────────────────────────────────────────────────────────
+const BROKER    = 'ws://76.13.243.127:9001';
+const MQTT_USER = 'lms_mqtt_broker';
+const MQTT_PASS = 'landslidemonitoringsystem';
+const PUB_TOPIC = 'lms/commands';   // browser → broker  (MQTTX subscribes here)
+const SUB_TOPIC = 'lms/data';       // broker  → browser  (MQTTX publishes here)
+
+let client = null, rTimer = null, rTick = null;
+let autoOn = false, autoTimer = null;
 const AUTO_MS = 5000;
 
-// tabs
+// ── tabs ──────────────────────────────────────────────────────────────────────
 const tabEls  = document.querySelectorAll('.tab');
 const pageEls = document.querySelectorAll('.page');
-function tab(i){ tabEls.forEach((t,j)=>t.classList.toggle('active',i===j)); pageEls.forEach((p,j)=>p.classList.toggle('active',i===j)); }
+function tab(i) {
+  tabEls.forEach((t,j)  => t.classList.toggle('active', i===j));
+  pageEls.forEach((p,j) => p.classList.toggle('active', i===j));
+}
 
-// ws
-function connect(){
-  if(ws&&(ws.readyState===1||ws.readyState===0))return;
+// ── MQTT connection ───────────────────────────────────────────────────────────
+function connect() {
+  if (client && client.connected) return;
   setConn('connecting');
-  try{ws=new WebSocket(WS);}catch(e){setConn('disconnected');schedReconn();return;}
-  ws.onopen=()=>{clearReconn();setConn('connected');readSensors();readPower();refreshGSM();ws_send({cmd:'system_info'});};
-  ws.onmessage=e=>{try{handle(JSON.parse(e.data));}catch{}};
-  ws.onclose=()=>{setConn('disconnected');schedReconn();};
-  ws.onerror=()=>{};
+
+  client = mqtt.connect(BROKER, {
+    username:        MQTT_USER,
+    password:        MQTT_PASS,
+    clientId:        'lms_browser_' + Math.random().toString(16).slice(2, 8),
+    reconnectPeriod: 0      // manual reconnect via schedReconn
+  });
+
+  client.on('connect', () => {
+    clearReconn();
+    setConn('connected');
+    client.subscribe(SUB_TOPIC);
+    readSensors();
+    readPower();
+    refreshGSM();
+    ws_send({ cmd: 'system_info' });
+  });
+
+  client.on('message', (topic, payload) => {
+    try { handle(JSON.parse(payload.toString())); } catch(e) {}
+  });
+
+  client.on('close', () => {
+    setConn('disconnected');
+    schedReconn();
+  });
+
+  client.on('error', () => {});
 }
 
-function ws_send(obj){if(ws&&ws.readyState===1)ws.send(JSON.stringify(obj));}
+// Publish a JSON command to the broker
+function ws_send(obj) {
+  if (client && client.connected)
+    client.publish(PUB_TOPIC, JSON.stringify(obj));
+}
 
-function schedReconn(){
-  clearTimeout(rTimer);let s=5;
-  document.getElementById('rsec').textContent=s;
+// ── reconnect logic ───────────────────────────────────────────────────────────
+function schedReconn() {
+  clearTimeout(rTimer); let s = 5;
+  document.getElementById('rsec').textContent = s;
   document.getElementById('rbar').classList.add('show');
-  rTick=setInterval(()=>{s--;document.getElementById('rsec').textContent=Math.max(0,s);},1000);
-  rTimer=setTimeout(()=>{clearReconn();connect();},5000);
+  rTick = setInterval(() => {
+    s--;
+    document.getElementById('rsec').textContent = Math.max(0, s);
+  }, 1000);
+  rTimer = setTimeout(() => { clearReconn(); connect(); }, 5000);
 }
-function clearReconn(){clearTimeout(rTimer);clearInterval(rTick);document.getElementById('rbar').classList.remove('show');}
-
-function setConn(s){
-  const p=document.getElementById('pill'); p.className='pill '+s;
-  document.getElementById('pillTxt').textContent=s.toUpperCase();
+function clearReconn() {
+  clearTimeout(rTimer);
+  clearInterval(rTick);
+  document.getElementById('rbar').classList.remove('show');
 }
 
-// message router
-function handle(d){
-  switch(d.type){
-    case 'sensor_data': updSensors(d); break;
-    case 'power_data':  updPower(d);   break;
-    case 'gsm_info':    updGSM(d);     break;
-    case 'gsm_response':appendAT(d.response); break;
-    case 'gsm_test':    updTest(d);    break;
-    case 'lora_result': updLora(d);    break;
-    case 'system_info': updSys(d);     break;
+function setConn(s) {
+  const p = document.getElementById('pill');
+  p.className = 'pill ' + s;
+  document.getElementById('pillTxt').textContent = s.toUpperCase();
+}
+
+// ── message router ────────────────────────────────────────────────────────────
+function handle(d) {
+  switch(d.type) {
+    case 'sensor_data':  updSensors(d); break;
+    case 'power_data':   updPower(d);   break;
+    case 'gsm_info':     updGSM(d);     break;
+    case 'gsm_response': appendAT(d.response); break;
+    case 'gsm_test':     updTest(d);    break;
+    case 'lora_result':  updLora(d);    break;
+    case 'system_info':  updSys(d);     break;
   }
 }
 
-// helpers
-function bdg(id,valid,enabled){
-  const e=document.getElementById(id);
-  if(!enabled){e.className='badge b-off';e.textContent='OFF';}
-  else if(valid){e.className='badge b-ok';e.textContent='OK';}
-  else{e.className='badge b-err';e.textContent='ERR';}
+// ── helpers ───────────────────────────────────────────────────────────────────
+function bdg(id, valid, enabled) {
+  const e = document.getElementById(id);
+  if (!enabled)     { e.className = 'badge b-off'; e.textContent = 'OFF'; }
+  else if (valid)   { e.className = 'badge b-ok';  e.textContent = 'OK';  }
+  else              { e.className = 'badge b-err'; e.textContent = 'ERR'; }
 }
 
-function setVal(id,v,digits,unitHtml){
-  const e=document.getElementById(id);if(!e)return;
-  const u=unitHtml||'';
-  e.innerHTML=(v===null||v===undefined)?'—'+u:(typeof v==='number'?v.toFixed(digits):v)+u;
+function setVal(id, v, digits, unitHtml) {
+  const e = document.getElementById(id); if (!e) return;
+  const u = unitHtml || '';
+  e.innerHTML = (v === null || v === undefined)
+    ? '—' + u
+    : (typeof v === 'number' ? v.toFixed(digits) : v) + u;
 }
 
-// sensor update
-function updSensors(d){
-  if(d.dht22){bdg('bd-dht',d.dht22.valid,d.dht22.enabled);setVal('v-dht-t',d.dht22.temperature,1,'<span class="unit">°C</span>');setVal('v-dht-h',d.dht22.humidity,1,'<span class="unit">%</span>');}
-  if(d.bh1750){bdg('bd-bh',d.bh1750.valid,d.bh1750.enabled);setVal('v-bh-l',d.bh1750.illuminance,1,'<span class="unit">lux</span>');}
-  if(d.bmp180){bdg('bd-bmp',d.bmp180.valid,d.bmp180.enabled);setVal('v-bmp-t',d.bmp180.temperature,1,'<span class="unit">°C</span>');setVal('v-bmp-p',d.bmp180.pressure,1,'<span class="unit">hPa</span>');}
-  if(d.soil){bdg('bd-soil',d.soil.valid,d.soil.enabled);setVal('v-soil-p',d.soil.percent,1,'<span class="unit">%</span>');document.getElementById('v-soil-r').textContent=d.soil.raw??'—';}
-  if(d.mpu6050){bdg('bd-mpu',d.mpu6050.valid,d.mpu6050.enabled);setVal('v-ax',d.mpu6050.ax,2,'<span class="unit">g</span>');setVal('v-ay',d.mpu6050.ay,2,'<span class="unit">g</span>');setVal('v-az',d.mpu6050.az,2,'<span class="unit">g</span>');setVal('v-gx',d.mpu6050.gx,2,'<span class="unit">°/s</span>');setVal('v-gy',d.mpu6050.gy,2,'<span class="unit">°/s</span>');setVal('v-gz',d.mpu6050.gz,2,'<span class="unit">°/s</span>');}
-  if(d.rain){bdg('bd-rain',d.rain.valid,d.rain.enabled);document.getElementById('v-rain-t').textContent=d.rain.tips??'—';setVal('v-rain-m',d.rain.mm,2,'<span class="unit">mm</span>');}
-}
-
-// power update
-function updPower(d){
-  if(d.solar){setVal('sv',d.solar.voltage,2,'<span class="pu"> V</span>');setVal('si',d.solar.current,1,'<span class="pu"> mA</span>');setVal('sp',(d.solar.power/1000),2,'<span class="pu"> W</span>');setVal('se',d.solar.energy_wh,3,'<span class="pu"> Wh</span>');}
-  if(d.battery){
-    setVal('bv',d.battery.voltage,2,'<span class="pu"> V</span>');
-    setVal('bi',d.battery.current,1,'<span class="pu"> mA</span>');
-    setVal('bp',(d.battery.power/1000),2,'<span class="pu"> W</span>');
-    setVal('be',d.battery.energy_wh,3,'<span class="pu"> Wh</span>');
-    // Battery % (estimated from voltage: 3.0V=0%, 4.2V=100%)
-    const pct=d.battery.percent??Math.min(100,Math.max(0,((d.battery.voltage-3.0)/1.2)*100));
-    const pctR=Math.round(pct);
-    const bdgEl=document.getElementById('bat-pct-badge');
-    const barEl=document.getElementById('bat-bar');
-    bdgEl.textContent=pctR+'%';
-    bdgEl.className='badge '+(pctR<20?'b-err':pctR<50?'b-wait':'b-ok');
-    barEl.style.width=pctR+'%';
-    barEl.className='bat-bar-fill '+(pctR<20?'low':pctR<50?'mid':'');
-    // charging time (if provided)
-    if(d.battery.charge_time_min!==undefined){
-      const m=d.battery.charge_time_min;
-      document.getElementById('bat-charge-time').textContent=m<60?m+'m':Math.floor(m/60)+'h '+(m%60)+'m';
+// ── sensor update ─────────────────────────────────────────────────────────────
+function updSensors(d) {
+  if (d.dht22) {
+    bdg('bd-dht', d.dht22.valid, d.dht22.enabled);
+    setVal('v-dht-t', d.dht22.temperature, 1, '<span class="unit">°C</span>');
+    setVal('v-dht-h', d.dht22.humidity,    1, '<span class="unit">%</span>');
+  }
+  if (d.bh1750) {
+    bdg('bd-bh', d.bh1750.valid, d.bh1750.enabled);
+    setVal('v-bh-l', d.bh1750.illuminance, 1, '<span class="unit">lux</span>');
+  }
+  if (d.bmp180) {
+    bdg('bd-bmp', d.bmp180.valid, d.bmp180.enabled);
+    setVal('v-bmp-t', d.bmp180.temperature, 1, '<span class="unit">°C</span>');
+    setVal('v-bmp-p', d.bmp180.pressure,    1, '<span class="unit">hPa</span>');
+  }
+  if (d.soil) {
+    bdg('bd-soil', d.soil.valid, d.soil.enabled);
+    setVal('v-soil-p', d.soil.percent, 1, '<span class="unit">%</span>');
+    document.getElementById('v-soil-r').textContent = d.soil.raw ?? '—';
+  }
+  if (d.mpu6050) {
+    bdg('bd-mpu', d.mpu6050.valid, d.mpu6050.enabled);
+    setVal('v-ax', d.mpu6050.ax, 2, '<span class="unit">g</span>');
+    setVal('v-ay', d.mpu6050.ay, 2, '<span class="unit">g</span>');
+    setVal('v-az', d.mpu6050.az, 2, '<span class="unit">g</span>');
+    setVal('v-gx', d.mpu6050.gx, 2, '<span class="unit">°/s</span>');
+    setVal('v-gy', d.mpu6050.gy, 2, '<span class="unit">°/s</span>');
+    setVal('v-gz', d.mpu6050.gz, 2, '<span class="unit">°/s</span>');
+    // ★ NEW: movement count
+    const mc = document.getElementById('v-mpu-mc');
+    mc.textContent = (d.mpu6050.movement_count !== undefined && d.mpu6050.movement_count !== null)
+      ? d.mpu6050.movement_count
+      : '—';
+    // ★ NEW: calibration result (only when response carries it)
+    if (d.mpu6050.calibrated !== undefined) {
+      const cr = document.getElementById('mpu-cal-result');
+      if (d.mpu6050.calibrated) {
+        cr.textContent = 'Calibration done. Offsets applied.';
+        cr.className = 'cal-result ok';
+      } else {
+        cr.textContent = 'Calibration failed — check sensor connection.';
+        cr.className = 'cal-result fail';
+      }
     }
   }
-  if(d.system){
-    const map={SOLAR_ONLY:['Solar Only','st-sol'],BATTERY_DISCHARGING:['Battery','st-bat'],HYBRID:['Solar + Battery','st-hyb'],IDLE:['Idle','st-idl']};
-    const [lbl,cls]=map[d.system.state]||['Unknown','st-idl'];
-    document.getElementById('sys-state').innerHTML=`<span class="state-badge ${cls}">${lbl}</span>`;
-    setVal('sys-load',(d.system.load_power/1000),2,' W');
-    if(d.system.energy_wh!==undefined)setVal('sys-energy',d.system.energy_wh,3,' Wh');
+  if (d.rain) {
+    bdg('bd-rain', d.rain.valid, d.rain.enabled);
+    document.getElementById('v-rain-t').textContent = d.rain.tips ?? '—';
+    setVal('v-rain-m', d.rain.mm, 2, '<span class="unit">mm</span>');
   }
 }
 
-// GSM update
-function updGSM(d){
-  const b=document.getElementById('bd-gsm');
-  if(d.registered){b.className='badge b-ok';b.textContent='OK';}else{b.className='badge b-err';b.textContent='NO NET';}
-  document.getElementById('gsm-sim').textContent=d.sim_status||'—';
-  document.getElementById('gsm-op').textContent=d.operator||'—';
-  document.getElementById('gsm-num').textContent=d.sim_number||'—';
-  document.getElementById('gsm-ip').textContent=d.ip||'—';
-  if(d.voltage!==undefined)document.getElementById('gsm-v').textContent=d.voltage.toFixed(2);
-  const rssi=d.rssi??0;
-  document.getElementById('gsm-rssi').textContent=rssi;
-  [['sb1',2],['sb2',8],['sb3',14],['sb4',20],['sb5',26]].forEach(([id,t])=>{document.getElementById(id).classList.toggle('on',rssi>=t);});
+// ── power update ──────────────────────────────────────────────────────────────
+function updPower(d) {
+  if (d.solar) {
+    setVal('sv', d.solar.voltage,           2, '<span class="pu"> V</span>');
+    setVal('si', d.solar.current,           1, '<span class="pu"> mA</span>');
+    setVal('sp', d.solar.power / 1000,      2, '<span class="pu"> W</span>');
+    setVal('se', d.solar.energy_wh,         3, '<span class="pu"> Wh</span>');
+  }
+  if (d.battery) {
+    setVal('bv', d.battery.voltage,         2, '<span class="pu"> V</span>');
+    setVal('bi', d.battery.current,         1, '<span class="pu"> mA</span>');
+    setVal('bp', d.battery.power / 1000,    2, '<span class="pu"> W</span>');
+    setVal('be', d.battery.energy_wh,       3, '<span class="pu"> Wh</span>');
+    // Battery % (estimated from voltage: 3.0V=0%, 4.2V=100%)
+    const pct  = d.battery.percent ?? Math.min(100, Math.max(0, ((d.battery.voltage - 3.0) / 1.2) * 100));
+    const pctR = Math.round(pct);
+    const bdgEl = document.getElementById('bat-pct-badge');
+    const barEl = document.getElementById('bat-bar');
+    bdgEl.textContent = pctR + '%';
+    bdgEl.className   = 'badge ' + (pctR < 20 ? 'b-err' : pctR < 50 ? 'b-wait' : 'b-ok');
+    barEl.style.width  = pctR + '%';
+    barEl.className    = 'bat-bar-fill ' + (pctR < 20 ? 'low' : pctR < 50 ? 'mid' : '');
+    if (d.battery.charge_time_min !== undefined) {
+      const m = d.battery.charge_time_min;
+      document.getElementById('bat-charge-time').textContent =
+        m < 60 ? m + 'm' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+    }
+  }
+  if (d.system) {
+    const map = {
+      SOLAR_ONLY:           ['Solar Only',     'st-sol'],
+      BATTERY_DISCHARGING:  ['Battery',        'st-bat'],
+      HYBRID:               ['Solar + Battery','st-hyb'],
+      IDLE:                 ['Idle',           'st-idl']
+    };
+    const [lbl, cls] = map[d.system.state] || ['Unknown', 'st-idl'];
+    document.getElementById('sys-state').innerHTML = `<span class="state-badge ${cls}">${lbl}</span>`;
+    setVal('sys-load', d.system.load_power / 1000, 2, ' W');
+    if (d.system.energy_wh !== undefined) setVal('sys-energy', d.system.energy_wh, 3, ' Wh');
+  }
 }
 
-function appendAT(txt){
-  const term=document.getElementById('term');
-  const d=document.createElement('div');d.className='t-rx';d.textContent=(txt||'').trim();
-  term.appendChild(d);term.scrollTop=term.scrollHeight;
+// ── GSM update ────────────────────────────────────────────────────────────────
+function updGSM(d) {
+  const b = document.getElementById('bd-gsm');
+  if (d.registered) { b.className = 'badge b-ok';  b.textContent = 'OK';     }
+  else              { b.className = 'badge b-err'; b.textContent = 'NO NET'; }
+  document.getElementById('gsm-sim').textContent = d.sim_status || '—';
+  document.getElementById('gsm-op').textContent  = d.operator   || '—';
+  document.getElementById('gsm-num').textContent = d.sim_number || '—';
+  document.getElementById('gsm-ip').textContent  = d.ip         || '—';
+  if (d.voltage !== undefined) document.getElementById('gsm-v').textContent = d.voltage.toFixed(2);
+  const rssi = d.rssi ?? 0;
+  document.getElementById('gsm-rssi').textContent = rssi;
+  [['sb1',2],['sb2',8],['sb3',14],['sb4',20],['sb5',26]].forEach(([id,t]) => {
+    document.getElementById(id).classList.toggle('on', rssi >= t);
+  });
 }
 
-function updTest(d){
-  const e=document.getElementById('gsm-result');
-  e.textContent=d.result||'—';e.className='result '+(d.success?'ok':'fail');
+function appendAT(txt) {
+  const term = document.getElementById('term');
+  const d = document.createElement('div');
+  d.className = 't-rx';
+  d.textContent = (txt || '').trim();
+  term.appendChild(d);
+  term.scrollTop = term.scrollHeight;
 }
 
-function updLora(d){
-  const e=document.getElementById('lora-result');
-  const b=document.getElementById('bd-lora');
-  if(d.sent){e.textContent='Packet sent. Hooter should activate within 2s.';e.className='result ok';b.className='badge b-ok';b.textContent='OK';}
-  else{e.textContent='Send failed — check LoRa wiring / hooter power.';e.className='result fail';b.className='badge b-err';b.textContent='ERR';}
+function updTest(d) {
+  const e = document.getElementById('gsm-result');
+  e.textContent = d.result || '—';
+  e.className   = 'result ' + (d.success ? 'ok' : 'fail');
 }
 
-function updSys(d){
-  if(d.uptime!==undefined)document.getElementById('sys-up').textContent=fmtUptime(d.uptime);
-  if(d.heap!==undefined)document.getElementById('sys-heap').textContent=(d.heap/1024).toFixed(1)+' KB';
-  if(d.clients!==undefined)document.getElementById('sys-cli').textContent=d.clients;
+function updLora(d) {
+  const e = document.getElementById('lora-result');
+  const b = document.getElementById('bd-lora');
+  if (d.sent) {
+    e.textContent = 'Packet sent. Hooter should activate within 2s.';
+    e.className   = 'result ok';
+    b.className   = 'badge b-ok';
+    b.textContent = 'OK';
+  } else {
+    e.textContent = 'Send failed — check LoRa wiring / hooter power.';
+    e.className   = 'result fail';
+    b.className   = 'badge b-err';
+    b.textContent = 'ERR';
+  }
 }
 
-function fmtUptime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;return`${h}h ${m}m ${ss}s`;}
-
-// actions
-function readSensors(){ws_send({cmd:'sensor_read'});}
-function readPower(){ws_send({cmd:'power_read'});}
-function refreshGSM(){ws_send({cmd:'gsm_info'});}
-
-function toggleSensor(name,on){ws_send({cmd:'sensor_toggle',sensor:name,state:on?'on':'off'});}
-
-function toggleAuto(){
-  autoOn=!autoOn;
-  document.getElementById('autoBtn').textContent='Auto: '+(autoOn?'ON':'OFF');
-  if(autoOn){autoTimer=setInterval(()=>{readSensors();readPower();},AUTO_MS);}else{clearInterval(autoTimer);}
+function updSys(d) {
+  if (d.uptime  !== undefined) document.getElementById('sys-up').textContent   = fmtUptime(d.uptime);
+  if (d.heap    !== undefined) document.getElementById('sys-heap').textContent = (d.heap / 1024).toFixed(1) + ' KB';
+  if (d.clients !== undefined) document.getElementById('sys-cli').textContent  = d.clients;
 }
 
-function triggerHooter(){
-  document.getElementById('lora-result').textContent='Sending LoRa packet…';
-  document.getElementById('lora-result').className='result';
-  ws_send({cmd:'lora_trigger',value:1});
+function fmtUptime(s) {
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  return `${h}h ${m}m ${ss}s`;
 }
 
-function gsmTest(t){
-  document.getElementById('gsm-result').textContent='Running '+t+' test…';
-  document.getElementById('gsm-result').className='result';
-  ws_send({cmd:'gsm_test',test:t});
+// ── actions ───────────────────────────────────────────────────────────────────
+function readSensors()  { ws_send({ cmd: 'sensor_read' }); }
+function readPower()    { ws_send({ cmd: 'power_read'  }); }
+function refreshGSM()   { ws_send({ cmd: 'gsm_info'    }); }
+
+function toggleSensor(name, on) {
+  ws_send({ cmd: 'sensor_toggle', sensor: name, state: on ? 'on' : 'off' });
 }
 
-function resetGSM(){ws_send({cmd:'gsm_reset'});}
-
-function setAPN(){
-  const apn=document.getElementById('opSelect').value;
-  ws_send({cmd:'gsm_at',command:`AT+CGDCONT=1,"IP","${apn}"`});
+function toggleAuto() {
+  autoOn = !autoOn;
+  document.getElementById('autoBtn').textContent = 'Auto: ' + (autoOn ? 'ON' : 'OFF');
+  if (autoOn) {
+    autoTimer = setInterval(() => { readSensors(); readPower(); }, AUTO_MS);
+  } else {
+    clearInterval(autoTimer);
+  }
 }
 
-function sendAT(){
-  const inp=document.getElementById('atIn');const cmd=inp.value.trim();if(!cmd)return;
-  const term=document.getElementById('term');
-  const d=document.createElement('div');d.className='t-tx';d.textContent='> '+cmd;
-  term.appendChild(d);term.scrollTop=term.scrollHeight;
-  ws_send({cmd:'gsm_at',command:cmd});
-  inp.value='';
+function triggerHooter() {
+  document.getElementById('lora-result').textContent = 'Sending LoRa packet…';
+  document.getElementById('lora-result').className   = 'result';
+  ws_send({ cmd: 'lora_trigger', value: 1 });
 }
 
-function qat(cmd){document.getElementById('atIn').value=cmd;sendAT();}
+function gsmTest(t) {
+  document.getElementById('gsm-result').textContent = 'Running ' + t + ' test…';
+  document.getElementById('gsm-result').className   = 'result';
+  ws_send({ cmd: 'gsm_test', test: t });
+}
+
+function resetGSM() { ws_send({ cmd: 'gsm_reset' }); }
+
+function setAPN() {
+  const apn = document.getElementById('opSelect').value;
+  ws_send({ cmd: 'gsm_at', command: `AT+CGDCONT=1,"IP","${apn}"` });
+}
+
+function sendAT() {
+  const inp = document.getElementById('atIn');
+  const cmd = inp.value.trim(); if (!cmd) return;
+  const term = document.getElementById('term');
+  const d = document.createElement('div'); d.className = 't-tx'; d.textContent = '> ' + cmd;
+  term.appendChild(d); term.scrollTop = term.scrollHeight;
+  ws_send({ cmd: 'gsm_at', command: cmd });
+  inp.value = '';
+}
+
+function qat(cmd) { document.getElementById('atIn').value = cmd; sendAT(); }
+
+// ★ NEW: Reset movement count
+function resetMovement() {
+  ws_send({ cmd: 'mpu_reset' });
+}
+
+// ★ NEW: Calibrate MPU6050
+function calibrateMPU() {
+  const cr = document.getElementById('mpu-cal-result');
+  cr.textContent = 'Calibrating… keep device level and still.';
+  cr.className   = 'cal-result';
+  ws_send({ cmd: 'mpu_calibrate' });
+}
 
 connect();
 </script>
