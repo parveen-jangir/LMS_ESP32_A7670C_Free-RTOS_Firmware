@@ -31,11 +31,6 @@
 #define ADC_RESOLUTION    12       // 12-bit ADC (0-4095)
 #define ADC_ATTENUATION   3        // 11dB attenuation (~3.3V)
 
-// ==================== FreeRTOS Configuration ====================
-#define SENSOR_TASK_STACK_SIZE    4096
-#define SENSOR_TASK_PRIORITY      2
-#define SENSOR_TASK_CORE          1    // Core 1 for sensor tasks
-
 // ==================== Calibration Defaults ====================
 #define BH1750_DEFAULT_OFFSET           0.0
 #define BMP180_DEFAULT_TEMP_OFFSET      0.0
@@ -60,6 +55,7 @@
 #define ENERGY_INTERVAL_MS        1000
 #define SHUNT_RESISTANCE          0.05f   // ohms
 
+<<<<<<< HEAD
 // ==================== LoRa Configuration ====================
 #define LORA_FREQUENCY            433E6  // LoRa frequency (433 MHz)
 #define LORA_TX_POWER             14     // LoRa transmission power (dBm)
@@ -68,5 +64,37 @@
 #define LORA_NSS_PIN              5      // LoRa NSS pin
 #define LORA_RESET_PIN            25     // LoRa reset pin
 #define LORA_DIO0_PIN             26     // LoRa DIO0 pin
+=======
+#define MAX_PAYLOAD_LEN         512
+
+// ==================== A7670C Modem Configuration ====================
+#define GSM_SERIAL Serial2
+#define MODEM_RX_PIN 16
+#define MODEM_TX_PIN 17
+#define MODEM_PWR_PIN 2
+#define MODEM_BAUD_RATE 115200
+
+// ==================== Command Handler Configuration ====================
+#define COMMAND_QUEUE_DEPTH 10
+
+// ==================== FreeRTOS Configuration ====================
+#define COMMAND_TASK_STACK_SIZE     4096
+#define COMMAND_TASK_PRIORITY       7
+#define COMMAND_TASK_DELAY_MS       5
+#define COMMAND_TASK_CORE_ID        1
+
+#define SENSOR_TASK_STACK_SIZE    4096
+#define SENSOR_TASK_PRIORITY      2
+#define SENSOR_TASK_CORE          1    // Core 1 for sensor tasks
+
+// ==================== A7670C Configuration ====================
+#define CFG_APN         "airtelgprs.com"      // Your carrier APN
+#define CFG_SMS_NUMBER  "+919511511257"    // Number for SMS/call tests
+// #define MQTT_BROKER "35.182.218.175"
+#define MQTT_BROKER "broker.hivemq.com"
+#define MQTT_PORT    1883
+#define MQTT_USER   ""
+#define MQTT_PASS   ""
+>>>>>>> branch 'main' of git@github.com:parveen-jangir/LMS_ESP32_A7670C_Free-RTOS_Firmware.git
 
 #endif // CONFIG_H

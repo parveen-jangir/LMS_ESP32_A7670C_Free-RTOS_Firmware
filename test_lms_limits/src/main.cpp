@@ -1,61 +1,44 @@
-/*
- * GSM_OTA — Example sketch for ESP32-S3 + A7670C
- *
- * Wiring:
- *   ESP32-S3 RX  (GPIO16) --> A7670C TX
- *   ESP32-S3 TX  (GPIO17) --> A7670C RX
- *   GND <--> GND
- *
- * Serial Monitor:
- *   Type  "update"  → start OTA
- *   Anything else   → forwarded to GSM module (passthrough)
- */
 #include <Arduino.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+#include "SensorManager/SensorManager.h"
+#include "local_storage/storage_manager.h"
+#include "command_handler/command_handler.h"
 #include "GSM_OTA/GSM_OTA.h"
+<<<<<<< HEAD
 #include "LORA_Handler/LORA_Handler.h"
+=======
+#include "A7670C/A7670C.h"
+#include "config.h"
+>>>>>>> branch 'main' of git@github.com:parveen-jangir/LMS_ESP32_A7670C_Free-RTOS_Firmware.git
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-#define GSM_RX_PIN   16
-#define GSM_TX_PIN   17
-#define GSM_BAUD     115200
+HardwareSerial gsmSerial(2);
 
-// ⚠️  Use raw.githubusercontent.com — NOT github.com/…/raw/refs/…
-//     The github.com URL redirects (302) and A7670C cannot follow redirects.
-const char* OTA_URL = "https://raw.githubusercontent.com/parveen-jangir/mqtt_bin_file/main/test_esp_ota.bin";
-// const char* OTA_URL = "https://raw.githubusercontent.com/parveen-jangir/mqtt_bin_file/refs/heads/main/esp32_s3_test_ota.bin";
-const char* APN     = "airtelgprs.com";
+SensorManager sensorManager;
+GSM_OTA gsmOta(gsmSerial, Serial);
+StorageManager STManager;
+A7670C modem(gsmSerial, MODEM_PWR_PIN);
+CommandHandler cmdHandler(sensorManager, STManager, gsmOta, modem);
 
-HardwareSerial gsm(2);  // Use UART2 for GSM
-
-// ─── Library instance ─────────────────────────────────────────────────────────
-GSM_OTA ota(gsm, Serial);
-
-// ─── Optional callbacks ───────────────────────────────────────────────────────
-void onProgress(int percent, int written, int total)
-{
-    // Draw a simple progress bar on Serial
-    Serial.printf("  [");
-    int filled = percent / 5;                // 20 chars wide
-    for (int i = 0; i < 20; i++) Serial.print(i < filled ? '=' : ' ');
-    Serial.printf("] %d%%  (%d/%d bytes)\n", percent, written, total);
-}
-
-void onLog(const char* msg)
-{
-    // All library logs come here too (already printed by the library itself
-    // if debugEnabled=true, so you can use this to forward to MQTT / SD card)
-    (void)msg;
-}
-
-// ─── Setup ────────────────────────────────────────────────────────────────────
-void setup()
-{
+void setup() {
     Serial.begin(115200);
-    delay(1000);
+    delay(200);
+    
+    Serial.println("\n=== LANDSLIDE MONITORING SYSTEM ===");
+    Serial.println(F("Initializing Sensor Manager..."));
+    
+    // if (sensorManager.initialize()) {
+    //     Serial.println(F("[MAIN] Sensor initialized"));
+    //     sensorManager.printSensorStatus();
+    // } else {
+    //     Serial.println(F("[MAIN] Sensor initialization failed"));
+    // }
 
-    // Init GSM UART
-    ota.begin(GSM_BAUD, GSM_RX_PIN, GSM_TX_PIN);
+    gsmSerial.begin(MODEM_BAUD_RATE, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
 
+<<<<<<< HEAD
     // Configure
     ota.setAPN(APN);
     ota.setChunkSize(512);           // optional – 512 is default
@@ -74,8 +57,12 @@ void setup()
     setupLoRa();
 sendLoraAlaram_old();
 
+=======
+    cmdHandler.begin();
+>>>>>>> branch 'main' of git@github.com:parveen-jangir/LMS_ESP32_A7670C_Free-RTOS_Firmware.git
 }
 
+<<<<<<< HEAD
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 void loop()
 {
@@ -109,3 +96,8 @@ void loop()
 
     delay(1000);
 }
+=======
+void loop() {
+    vTaskDelay(pdMS_TO_TICKS(1000));
+}
+>>>>>>> branch 'main' of git@github.com:parveen-jangir/LMS_ESP32_A7670C_Free-RTOS_Firmware.git
