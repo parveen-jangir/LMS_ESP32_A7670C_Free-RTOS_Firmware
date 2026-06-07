@@ -35,7 +35,6 @@
         "type": "sensor_broadcast",
         "timestamp": 56296,
         "status": "ok",
-        "message": "Sensor readings broadcast",
         "bmp180": {
             "temperature": 23.5,
             "pressure": 895.45,
@@ -61,6 +60,7 @@
                 "z": -3.091603
             },
             "temperature": -5788160,
+            "movement_count": 0,
             "valid": true,
             "timestamp": 56289,
             "state": true
@@ -95,8 +95,7 @@
         "type": "system_info",
         "uptime_s": 21,
         "free_heap": 316348,
-        "status": "ok",
-        "msg": "System information retrieved"
+        "status": "ok"
     },
     {
         "type": "battery_status"
@@ -107,8 +106,7 @@
         "voltage": 3.7,
         "current": 0.5,
         "power_mw": 1.85,
-        "status": "ok",
-        "msg": "Battery status retrieved"
+        "status": "ok"
     },
     {
         "type": "solar_status"
@@ -118,8 +116,7 @@
         "voltage": 5.0,
         "current": 0.2,
         "power_mw": 1.0,
-        "status": "ok",
-        "msg": "Solar panel status retrieved"
+        "status": "ok"
     },
     {
         "type": "system_power"
@@ -130,7 +127,6 @@
         "voltage": 3.7,
         "current": 0.5,
         "power_mw": 1.85,
-        "status": "ok",
-        "msg": "System power status retrieved"
+        "status": "ok"
     }
 ]

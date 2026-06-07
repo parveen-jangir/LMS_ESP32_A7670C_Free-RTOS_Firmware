@@ -357,7 +357,7 @@ void CommandHandler::handleSensorState(JsonDocument &doc, bool fromBle, bool fro
     sensorMgr.sensorState(sensorName, state);
 
     doc["status"] = "ok";
-    doc["message"] = String("Sensor '") + sensorName + "' " + (state ? "enabled" : "disabled");
+    doc["msg"] = String("Sensor '") + sensorName + "' " + (state ? "enabled" : "disabled");
     sendResponse(doc, fromBle, fromMqtt);
 }
 

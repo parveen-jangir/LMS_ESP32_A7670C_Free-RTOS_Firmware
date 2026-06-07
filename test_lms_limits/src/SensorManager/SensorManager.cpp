@@ -202,7 +202,7 @@ bool SensorManager::getAllReadingsJson(JsonDocument &doc)
     doc["type"] = "sensor_broadcast";
     doc["timestamp"] = readings.readTimestamp;
     doc["status"] = "ok";
-    doc["message"] = "Sensor readings broadcast";
+    doc["msg"] = "Sensor readings broadcast";
 
     // BMP180
     JsonObject bmp180 = doc["bmp180"].to<JsonObject>();
@@ -236,6 +236,7 @@ bool SensorManager::getAllReadingsJson(JsonDocument &doc)
     mpu["valid"]       = readings.mpu6050.isValid;
     mpu["timestamp"]   = readings.mpu6050.timestamp;
     mpu["state"]       = bool(mpu6050Enabled); // true if valid, false if error
+    mpu["movement_count"] = readings.mpu6050.movementCount;
     // DHT22
     JsonObject dht22 = doc["dht22"].to<JsonObject>();
     dht22["temperature"] = readings.dht22.temperature;

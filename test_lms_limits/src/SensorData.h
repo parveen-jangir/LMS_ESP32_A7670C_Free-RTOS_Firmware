@@ -29,6 +29,7 @@ struct MPU6050Data {
     uint32_t timestamp;
     bool isValid;
     uint8_t errorCount;
+    uint8_t movementCount;
 };
 
 struct DHT22Data {
