@@ -12,6 +12,7 @@
  */
 #include <Arduino.h>
 #include "GSM_OTA/GSM_OTA.h"
+#include "LORA_Handler/LORA_Handler.h"
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 #define GSM_RX_PIN   16
@@ -69,36 +70,42 @@ void setup()
     Serial.println(" Type 'update' → start OTA");
     Serial.println(" Anything else → GSM passthrough");
     Serial.println("================================");
+
+    setupLoRa();
+sendLoraAlaram_old();
+
 }
 
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 void loop()
 {
     // ── Serial → GSM passthrough / OTA trigger ────────────────────────────────
-    if (Serial.available()) {
-        String input = Serial.readStringUntil('\n');
-        input.trim();
+    // if (Serial.available()) {
+    //     String input = Serial.readStringUntil('\n');
+    //     input.trim();
 
-        if (input.equalsIgnoreCase("update")) {
-            Serial.println("\n>> OTA triggered");
-            OTAResult result = ota.performOTA(OTA_URL);
+    //     if (input.equalsIgnoreCase("update")) {
+    //         Serial.println("\n>> OTA triggered");
+    //         OTAResult result = ota.performOTA(OTA_URL);
 
-            if (result == OTA_SUCCESS) {
-                Serial.println(">> OTA done! Rebooting in 3 s...");
-                delay(3000);
-                esp_restart();
-            } else {
-                Serial.printf(">> OTA FAILED: %s (code %d)\n",
-                              GSM_OTA::resultToString(result), (int)result);
-            }
+    //         if (result == OTA_SUCCESS) {
+    //             Serial.println(">> OTA done! Rebooting in 3 s...");
+    //             delay(3000);
+    //             esp_restart();
+    //         } else {
+    //             Serial.printf(">> OTA FAILED: %s (code %d)\n",
+    //                           GSM_OTA::resultToString(result), (int)result);
+    //         }
 
-        } else {
-            gsm.println(input);   // forward to GSM
-        }
-    }
-
+    //     } else {
+    //         gsm.println(input);   // forward to GSM
+    //     }
+    // }
+ sendLoraAlaram_old();
     // ── GSM → Serial passthrough ──────────────────────────────────────────────
-    while (gsm.available()) {
-        Serial.write(gsm.read());
-    }
+    // while (gsm.available()) {
+    //     Serial.write(gsm.read());
+    // }
+
+    delay(1000);
 }

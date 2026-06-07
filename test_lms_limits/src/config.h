@@ -60,4 +60,13 @@
 #define ENERGY_INTERVAL_MS        1000
 #define SHUNT_RESISTANCE          0.05f   // ohms
 
+// ==================== LoRa Configuration ====================
+#define LORA_FREQUENCY            433E6  // LoRa frequency (433 MHz)
+#define LORA_TX_POWER             14     // LoRa transmission power (dBm)
+#define LORA_SPREADING_FACTOR     9      // LoRa spreading factor (7-12)
+
+#define LORA_NSS_PIN              5      // LoRa NSS pin
+#define LORA_RESET_PIN            25     // LoRa reset pin
+#define LORA_DIO0_PIN             26     // LoRa DIO0 pin
+
 #endif // CONFIG_H

@@ -44,6 +44,7 @@ private:
     // Sensor enable/disable state
     bool bmp180Enabled, bh1750Enabled, mpu6050Enabled;
     bool dht22Enabled, soilMoistureEnabled, rainGaugeEnabled;
+    bool LoRaEnabled = false;
 
 public:
     SensorManager();
