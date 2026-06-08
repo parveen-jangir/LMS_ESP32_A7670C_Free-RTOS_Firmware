@@ -16,14 +16,11 @@ GSM_OTA::GSM_OTA(HardwareSerial& gsmSerial, HardwareSerial& debugSerial)
 }
 
 // ─── Public config ────────────────────────────────────────────────────────────
-// void GSM_OTA::begin(uint32_t baud, int8_t rxPin, int8_t txPin)
-// {
-//     if (!_gsm)
-//     {
-//         _gsm.begin(baud, SERIAL_8N1, rxPin, txPin);
-//     }
-//     vTaskDelay(pdMS_TO_TICKS(500));
-// }
+void GSM_OTA::begin(uint32_t baud, int8_t rxPin, int8_t txPin)
+{
+    _gsm.begin(baud, SERIAL_8N1, rxPin, txPin);
+    delay(500);
+}
 
 void GSM_OTA::setAPN(const char* apn)            { strncpy(_apn, apn, sizeof(_apn)-1); }
 void GSM_OTA::setChunkSize(uint16_t size)         { _chunkSize = size; }
@@ -74,7 +71,7 @@ void GSM_OTA::_log(const char* fmt, ...)
 // ─── Internal: GSM helpers ────────────────────────────────────────────────────
 void GSM_OTA::_gsmFlush()
 {
-    vTaskDelay(pdMS_TO_TICKS(20));
+    delay(20);
     while (_gsm.available()) _gsm.read();
 }
 
@@ -89,6 +86,7 @@ String GSM_OTA::_gsmReadUntil(const char* token, uint32_t timeout_ms)
             t = millis();
         }
         if (buf.indexOf(token) != -1) break;
+        else delay(10);
     }
     return buf;
 }

@@ -37,6 +37,7 @@ public:
     void begin();
 
     void configSensors();
+    void sendResponse(JsonDocument &response, bool webSoc = false, bool toMqtt = true);
 private:
     SensorManager &sensorMgr;
     StorageManager &storageMgr;
@@ -44,11 +45,13 @@ private:
     A7670C &modem;
     String _deviceMac;
     String _topic;
+    String tid = DEFAULT_TID;
 
     // ── FreeRTOS ─────────────────────────────────────────────────────────────
     QueueHandle_t cmdQueue     = nullptr;
     TaskHandle_t  workerHandle = nullptr;
-
+    TaskHandle_t  apiHandle    = nullptr;
+    TaskHandle_t  gsmHandle    = nullptr;
     static void workerTask(void *param);
     static void gsmTask(void *param);
     static void apiTask(void *param);
@@ -58,7 +61,6 @@ private:
 
      // ── Command handlers ─────────────────────────────────────────────────────
 
-    void sendResponse(JsonDocument &response, bool webSoc = false, bool toMqtt = true);
     void dispatch(const commandFormat &cmdPkt);
     void setupMqtt();
     void buildDeviceMac();

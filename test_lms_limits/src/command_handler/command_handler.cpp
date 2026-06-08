@@ -14,7 +14,8 @@ void CommandHandler::mqttCallback(const String &topic, const String &payload)
     }
 }
 
-void CommandHandler::onSmsReceived(SmsMessage msg) {
+void CommandHandler::onSmsReceived(SmsMessage msg)
+{
     Serial.println("  📩  INCOMING SMS");
     Serial.println("  From      : " + msg.sender);
     Serial.println("  Timestamp : " + msg.timestamp);
@@ -22,7 +23,8 @@ void CommandHandler::onSmsReceived(SmsMessage msg) {
     Serial.println("  Text      : " + msg.text);
 }
 
-void CommandHandler::onIncomingCall(const String& number) {
+void CommandHandler::onIncomingCall(const String &number)
+{
     Serial.println("  📞  INCOMING CALL");
     Serial.println("  From : " + (number.isEmpty() ? "Unknown / withheld" : number));
     Serial.println();
@@ -40,32 +42,32 @@ CommandHandler::CommandHandler(SensorManager &sensorMgr, StorageManager &storage
 
 void CommandHandler::buildDeviceMac()
 {
-  uint64_t chipid = ESP.getEfuseMac();
-  uint8_t mac[6];
-  mac[0] = (chipid >> 40) & 0xFF;
-  mac[1] = (chipid >> 32) & 0xFF;
-  mac[2] = (chipid >> 24) & 0xFF;
-  mac[3] = (chipid >> 16) & 0xFF;
-  mac[4] = (chipid >> 8) & 0xFF;
-  mac[5] = chipid & 0xFF;
+    uint64_t chipid = ESP.getEfuseMac();
+    uint8_t mac[6];
+    mac[0] = (chipid >> 40) & 0xFF;
+    mac[1] = (chipid >> 32) & 0xFF;
+    mac[2] = (chipid >> 24) & 0xFF;
+    mac[3] = (chipid >> 16) & 0xFF;
+    mac[4] = (chipid >> 8) & 0xFF;
+    mac[5] = chipid & 0xFF;
 
-  _deviceMac = "";
-  _deviceMac.reserve(12);
-  for (int i = 5; i >= 0; i--)
-  {
-    if (mac[i] < 0x10)
-      _deviceMac += '0';
-    _deviceMac += String(mac[i], HEX);
-  }
+    _deviceMac = "";
+    _deviceMac.reserve(12);
+    for (int i = 5; i >= 0; i--)
+    {
+        if (mac[i] < 0x10)
+            _deviceMac += '0';
+        _deviceMac += String(mac[i], HEX);
+    }
 
-  Serial.println("Device MAC: " + _deviceMac);
+    Serial.println("Device MAC: " + _deviceMac);
 }
 
 void CommandHandler::buildTopic()
 {
-  _topic = String("lms/devices/") + _deviceMac + "/configuration/send";
+    _topic = String("lms/devices/") + _deviceMac + "/configuration/send";
 
-  Serial.println("[MQTT] Subscribed Topic: " + _topic);
+    Serial.println("[MQTT] Subscribed Topic: " + _topic);
 }
 
 // ── Private: enqueue ──────────────────────────────────────────────────────────
@@ -93,10 +95,12 @@ bool CommandHandler::enqueue(const char *jsonStr, size_t len, bool fromBle)
 
 CommandHandler::~CommandHandler()
 {
-    if (workerHandle) {
+    if (workerHandle)
+    {
         vTaskDelete(workerHandle);
     }
-    if (cmdQueue) {
+    if (cmdQueue)
+    {
         vQueueDelete(cmdQueue);
     }
 }
@@ -104,31 +108,20 @@ CommandHandler::~CommandHandler()
 void CommandHandler::begin()
 {
     xTaskCreate(
-        workerTask, 
-        "CmdWorker", 
-        COMMAND_TASK_STACK_SIZE, 
-        this, 
-        COMMAND_TASK_PRIORITY, 
-        &workerHandle
-    );
+        workerTask,
+        "CmdWorker",
+        COMMAND_TASK_STACK_SIZE,
+        this,
+        COMMAND_TASK_PRIORITY,
+        &workerHandle);
 
     xTaskCreate(
-        gsmTask, 
-        "GsmWorker", 
-        GSM_TASK_STACK_SIZE, 
-        this, 
-        GSM_TASK_PRIORITY, 
-        nullptr
-    );
-
-    xTaskCreate(
-        apiTask, 
-        "ApiWorker", 
-        API_TASK_STACK_SIZE, 
-        this, 
-        API_TASK_PRIORITY, 
-        nullptr
-    );
+        gsmTask,
+        "GsmWorker",
+        GSM_TASK_STACK_SIZE,
+        this,
+        GSM_TASK_PRIORITY,
+        &gsmHandle);
 
     modem.onMqttMessage(mqttCallback);
     modem.onSms(onSmsReceived);
@@ -136,28 +129,63 @@ void CommandHandler::begin()
 
     // Enable AT traffic debug output
     modem.setDebug(Serial);
-    modem.setDebugEnabled(true);   // ← set false to hide raw AT traffic
+    modem.setDebugEnabled(true); // ← set false to hide raw AT traffic
 
     buildDeviceMac();
     buildTopic();
 
-    if (!modem.begin()) {
+    if (!modem.begin())
+    {
         Serial.println("[GSM] Failed initialization");
-    } else {
+    }
+    else
+    {
         Serial.println("[GSM] Modem initialized");
         setupMqtt();
     }
 
+    if (sensorMgr.initialize())
+    {
+        Serial.println(F("[MAIN] Sensor initialized"));
+        sensorMgr.printSensorStatus();
+        configSensors();
+    }
+    else
+    {
+        Serial.println(F("[MAIN] Sensor initialization failed"));
+    }
+
+    xTaskCreate(
+        apiTask,
+        "ApiWorker",
+        API_TASK_STACK_SIZE,
+        this,
+        API_TASK_PRIORITY,
+        &apiHandle);
 }
 
-void printResult(A7670C_Result r) {
-    switch (r) {
-        case A7670C_Result::OK:         Serial.println("OK");         break;
-        case A7670C_Result::ERROR:      Serial.println("ERROR");      break;
-        case A7670C_Result::TIMEOUT:    Serial.println("TIMEOUT");    break;
-        case A7670C_Result::HTTP_ERROR: Serial.println("HTTP_ERROR"); break;
-        case A7670C_Result::MQTT_ERROR: Serial.println("MQTT_ERROR"); break;
-        default:                        Serial.println("UNKNOWN");    break;
+void printResult(A7670C_Result r)
+{
+    switch (r)
+    {
+    case A7670C_Result::OK:
+        Serial.println("OK");
+        break;
+    case A7670C_Result::ERROR:
+        Serial.println("ERROR");
+        break;
+    case A7670C_Result::TIMEOUT:
+        Serial.println("TIMEOUT");
+        break;
+    case A7670C_Result::HTTP_ERROR:
+        Serial.println("HTTP_ERROR");
+        break;
+    case A7670C_Result::MQTT_ERROR:
+        Serial.println("MQTT_ERROR");
+        break;
+    default:
+        Serial.println("UNKNOWN");
+        break;
     }
 }
 
@@ -172,17 +200,18 @@ void CommandHandler::setupMqtt()
     Serial.print("[CMD] MQTT Configure Result: ");
     printResult(res);
 
-    if(res == A7670C_Result::OK) {
+    if (res == A7670C_Result::OK)
+    {
         JsonDocument doc;
         doc["status"] = "ok";
         doc["message"] = "[MQTT] Live";
         sendResponse(doc, true, true);
-    } 
+    }
 }
 
 void CommandHandler::workerTask(void *param)
 {
-    CommandHandler *handler = static_cast<CommandHandler*>(param);
+    CommandHandler *handler = static_cast<CommandHandler *>(param);
     if (!handler)
     {
         vTaskDelete(nullptr);
@@ -225,9 +254,23 @@ void CommandHandler::workerLoop()
 void CommandHandler::apiTask(void *param)
 {
     CommandHandler *self = static_cast<CommandHandler *>(param);
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
     while (true)
     {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        String apiUrl = self->sensorMgr.generateApiUrl(self->tid);
+        Serial.println(apiUrl);
+
+        HttpResponse response;
+
+        response = self->modem.httpGet(apiUrl);
+
+        Serial.print("[API] GET ");
+        printResult(response.success ? A7670C_Result::OK : A7670C_Result::HTTP_ERROR);
+        Serial.println("  Status Code: " + String(response.statusCode));
+        Serial.println("  Body: " + response.body);
+
+        vTaskDelay(pdMS_TO_TICKS(API_HIT_INTERVAL_MS));
     }
     vTaskDelete(nullptr);
 }
@@ -272,21 +315,65 @@ void CommandHandler::dispatch(const commandFormat &pkt)
         doc["status"] = "ok";
         sendResponse(doc, pkt.formBle, pkt.formMqtt);
     }
-    else if(strcmp(cmdStr, "sensor_state") == 0)
+    else if (strcmp(cmdStr, "sensor_state") == 0)
     {
         handleSensorState(doc, pkt.formBle, pkt.formMqtt);
     }
-    else if(strcmp(cmdStr, "sensor_broadcast") == 0)
+    else if (strcmp(cmdStr, "sensor_broadcast") == 0)
     {
         handleSensorBroadcast(doc, pkt.formBle, pkt.formMqtt);
     }
-    else if(strcmp(cmdStr, "system_info") == 0)
+    else if (strcmp(cmdStr, "system_info") == 0)
     {
-        if (!getSystemInfo(doc, pkt.formBle, pkt.formMqtt)) {
+        if (!getSystemInfo(doc, pkt.formBle, pkt.formMqtt))
+        {
             doc["status"] = "error";
             doc["error"] = "failed_get_system_info";
         }
         sendResponse(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if (strcmp(cmdStr, "update_device") == 0)
+    {
+        modem.mqttDisconnect();
+        vTaskSuspend(apiHandle);
+        vTaskSuspend(gsmHandle);
+
+        gsmOta.setAPN(APN);
+        gsmOta.setChunkSize(1024); // optional – 1024 is default
+        gsmOta.setDebugEnabled(true);
+
+        String url = doc["url"] | OTA_URL;
+        OTAResult result = gsmOta.performOTA(url.c_str());
+
+        setupMqtt();
+        
+        if (result == OTA_SUCCESS)
+        {
+            Serial.println("[OTA] done! Rebooting in 3 s");
+            delay(3000);
+            doc["status"] = "ok";
+            doc["msg"] = "OTA successful, rebooting...";
+            sendResponse(doc, true, true);
+        }
+        else
+        {
+            doc["status"] = "error";
+            doc["error"] = GSM_OTA::resultToString(result);
+            doc["msg"] = "rebooting...";
+            sendResponse(doc, true, true);
+            Serial.printf("[OTA] FAILED: %s (code %d)\n", GSM_OTA::resultToString(result), (int)result);
+        }
+        
+        esp_restart();
+        vTaskResume(gsmHandle);
+        vTaskResume(apiHandle);
+    }
+    else if(strcmp(cmdStr, "reboot") == 0)
+    {
+        doc["status"] = "ok";
+        doc["message"] = "Rebooting...";
+        sendResponse(doc, pkt.formBle, pkt.formMqtt);
+        esp_restart();
     }
     else
     {
@@ -322,35 +409,36 @@ void CommandHandler::configSensors()
 {
     // Default calibration setup
     Serial.println("[SENS] CONFIGURING SENSORS...");
-    
+
     // BMP180 calibration
     sensorMgr.setBMP180CalibrationOffset(0.0, 0.0);
-    
+
     // BH1750 calibration
     sensorMgr.setBH1750CalibrationOffset(0.0);
-    
+
     // MPU6050 calibration
     sensorMgr.setMPU6050CalibrationOffset(
-        0.0, 0.0, 0.0,  // Accel offsets
-        0.0, 0.0, 0.0,  // Gyro offsets
-        0.0              // Temp offset
+        0.0, 0.0, 0.0, // Accel offsets
+        0.0, 0.0, 0.0, // Gyro offsets
+        0.0            // Temp offset
     );
-    
+
     // DHT22 calibration
     sensorMgr.setDHT22CalibrationOffset(0.0, 0.0);
-    
+
     // Soil Moisture calibration (0=dry, 4095=wet)
     sensorMgr.setSoilMoistureCalibrationOffset(0, 4095);
-    
+
     // Rain Gauge calibration (0.2794 mm per tip)
     sensorMgr.setRainGaugeTipVolume(0.2794);
-    
+
     // Set read interval
     sensorMgr.setReadInterval(5000);
-    
+
     Serial.println("[SENS] CONFIG DONE");
     // Start continuous reading task
-    if (!sensorMgr.startReadingTask()) {
+    if (!sensorMgr.startReadingTask())
+    {
         Serial.println("[SENS][ERROR] Failed to start sensor task!");
     }
 
@@ -359,10 +447,11 @@ void CommandHandler::configSensors()
 
 void CommandHandler::handleSensorState(JsonDocument &doc, bool fromBle, bool fromMqtt)
 {
-    const char* sensorName = doc["sensor"] | "";
+    const char *sensorName = doc["sensor"] | "";
     bool state = doc["state"] | false;
 
-    if (sensorName[0] == '\0') {
+    if (sensorName[0] == '\0')
+    {
         Serial.println(F("[CMD][ERROR] incomplete cmd"));
         JsonDocument errResp;
         errResp["status"] = "error";
@@ -389,12 +478,11 @@ void CommandHandler::handleSensorBroadcast(JsonDocument &doc, bool fromBle, bool
 
 bool CommandHandler::getSystemInfo(JsonDocument &doc, bool fromBle, bool fromMqtt)
 {
-    doc["uptime_s"]  = esp_timer_get_time() / 1000000ULL;
+    doc["uptime_s"] = esp_timer_get_time() / 1000000ULL;
     doc["free_heap"] = ESP.getFreeHeap();
 
     doc["status"] = "ok";
-    doc["msg"]    = "System information retrieved";
+    doc["msg"] = "System information retrieved";
 
     return true;
 }
-

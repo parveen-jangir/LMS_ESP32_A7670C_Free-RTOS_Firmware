@@ -485,3 +485,66 @@ void SensorManager::printLastReadings() {
     
     Serial.println("=======================================\n");
 }
+
+String SensorManager::generateApiUrl(const String &tripletId)
+{
+    AllSensorReadings r = getAllReadings();
+
+    String url =
+        "https://landslidemonitoring.in/ota.php?"
+        "api_key=3WU63XFVOKEC1VBM";
+
+    url += "&triplet=" + tripletId;
+
+    // t1s1 = temp,humidity
+    url += "&" + tripletId + "s1=" +
+           String(r.dht22.temperature, 2) + "," +
+           String(r.dht22.humidity, 2);
+
+    // t1s2 = pressure
+    url += "&" + tripletId + "s2=" +
+           String(r.bmp180.pressure, 2);
+
+    // t1s3 = rainfall
+    url += "&" + tripletId + "s3=" +
+           String(r.rainGauge.totalRainfall, 2);
+
+    // t1s4 = light
+    url += "&" + tripletId + "s4=" +
+           String(r.bh1750.illuminance, 2);
+
+    // MPU6050 data
+    float roll  = 0;
+    float pitch = 0;
+    float yaw   = 0;
+    uint32_t motionCount = 0;
+
+    url += "&" + tripletId + "s5=" +
+           String(r.mpu6050.accelX, 2) + "," +
+           String(r.mpu6050.accelY, 2) + "," +
+           String(r.mpu6050.accelZ, 2) + "," +
+           String(r.mpu6050.gyroX, 2) + "," +
+           String(r.mpu6050.gyroY, 2) + "," +
+           String(r.mpu6050.gyroZ, 2) + "," +
+           String(roll, 2) + "," +
+           String(pitch, 2) + "," +
+           String(yaw, 2) + "," +
+           String(motionCount) + ",0,0";
+
+    // soil temperature
+    url += "&" + tripletId + "s6=" +
+           String(r.bmp180.temperature, 2);
+
+    // soil moisture
+    url += "&" + tripletId + "s7=" +
+           String(r.soilMoisture.rawValue);
+
+    // reserved
+    url += "&" + tripletId + "s8=0";
+
+    // GPS
+    url += "&" + tripletId + "s9=00.0000|00.0000";
+
+    return url;
+}
+

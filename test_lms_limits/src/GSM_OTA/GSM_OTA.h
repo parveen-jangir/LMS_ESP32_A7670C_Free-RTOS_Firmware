@@ -42,7 +42,7 @@ typedef void (*OTALogCallback)(const char* message);
 #define GSM_OTA_DEFAULT_APN         "airtelgprs.com"
 #define GSM_OTA_CMD_TIMEOUT_MS      10000
 #define GSM_OTA_HTTP_TIMEOUT_MS     60000
-#define GSM_OTA_CHUNK_SIZE          512
+#define GSM_OTA_CHUNK_SIZE          2048
 #define GSM_OTA_TRAIL_BYTES         10   // bytes to discard after binary chunk
 
 // ─── Class ────────────────────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ public:
     GSM_OTA(HardwareSerial& gsmSerial, HardwareSerial& debugSerial);
 
     // Initialise GSM UART (call in setup())
-    // void begin(uint32_t baud, int8_t rxPin, int8_t txPin);
+    void begin(uint32_t baud, int8_t rxPin, int8_t txPin);
 
     // Configuration
     void setAPN(const char* apn);

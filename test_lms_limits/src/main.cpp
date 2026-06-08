@@ -19,10 +19,36 @@ StorageManager STManager;
 A7670C modem(gsmSerial, MODEM_PWR_PIN);
 CommandHandler cmdHandler(sensorManager, STManager, gsmOta, modem);
 
-void setup() {
+// static int lastReportedPercent = 0;
+
+void onProgress(int percent, int written, int total)
+{
+    // Draw a simple progress bar on Serial
+    Serial.printf("  [");
+    int filled = percent / 5; // 20 chars wide
+    for (int i = 0; i < 20; i++)
+        Serial.print(i < filled ? '=' : ' ');
+    Serial.printf("] %d%%  (%d/%d bytes)\n", percent, written, total);
+
+    // uint8_t milestone = (percent / 5) * 5;
+
+    // if (milestone >= 5 && milestone <= 100 && milestone > lastReportedPercent)
+    // {
+    //     lastReportedPercent = milestone;
+
+    //     JsonDocument doc;
+    //     doc["type"] = "ota_progress";
+    //     doc["progress"] = milestone;
+
+    //     cmdHandler.sendResponse(doc, true, true);
+    // }
+}
+
+void setup()
+{
     Serial.begin(115200);
     delay(200);
-    
+
     Serial.println("\n=== LANDSLIDE MONITORING SYSTEM ===");
     Serial.println(F("Initializing Sensor Manager..."));
 
@@ -30,17 +56,10 @@ void setup() {
 
     cmdHandler.begin();
 
-    if (sensorManager.initialize()) {
-        Serial.println(F("[MAIN] Sensor initialized"));
-        sensorManager.printSensorStatus();
-        cmdHandler.configSensors();
-    } else {
-        Serial.println(F("[MAIN] Sensor initialization failed"));
-    }
+    gsmOta.onProgress(onProgress);
 
     // setupLoRa();
     // sendLoraAlaram_old();
-
 }
 
 // ─── Loop ─────────────────────────────────────────────────────────────────────

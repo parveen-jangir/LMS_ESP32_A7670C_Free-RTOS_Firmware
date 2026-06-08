@@ -75,10 +75,10 @@
 #define COMMAND_QUEUE_DEPTH 10
 
 // ==================== FreeRTOS Configuration ====================
-#define COMMAND_TASK_STACK_SIZE     4096
+#define COMMAND_TASK_STACK_SIZE     8192
 #define COMMAND_TASK_PRIORITY       7
 #define COMMAND_TASK_DELAY_MS       5
-#define COMMAND_TASK_CORE_ID        1
+#define COMMAND_TASK_CORE_ID        0
 
 #define SENSOR_TASK_STACK_SIZE    4096
 #define SENSOR_TASK_PRIORITY      7
@@ -93,7 +93,7 @@
 #define API_TASK_CORE             1    // Core 1 for API tasks
 
 // ==================== A7670C Configuration ====================
-#define CFG_APN         "airtelgprs.com"      // Your carrier APN
+#define APN         "airtelgprs.com"      // Your carrier APN
 #define CFG_SMS_NUMBER  "+919511511257"    // Number for SMS/call tests
 // #define MQTT_BROKER "35.182.218.175"
 #define MQTT_BROKER "76.13.243.127"
@@ -101,4 +101,8 @@
 #define MQTT_USER   "lms_mqtt_broker"
 #define MQTT_PASS   "landslidemonitoringsystem"
 
+#define DEFAULT_TID "t1"
+#define API_HIT_INTERVAL_MS 10*60*1000  // 10 minutes
+
+#define OTA_URL "https://raw.githubusercontent.com/parveen-jangir/mqtt_bin_file/main/test_esp_ota.bin"
 #endif // CONFIG_H

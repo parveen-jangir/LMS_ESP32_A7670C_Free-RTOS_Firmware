@@ -27,7 +27,6 @@ private:
     RainGaugeSensor* rainGauge;
     
     // FreeRTOS
-    TaskHandle_t sensorTaskHandle;
     SemaphoreHandle_t dataMutex;
     
     // Data storage
@@ -47,6 +46,8 @@ private:
     bool dht22Enabled, soilMoistureEnabled, rainGaugeEnabled;
 
 public:
+
+    TaskHandle_t sensorTaskHandle;
     SensorManager();
     ~SensorManager();
     
@@ -75,6 +76,7 @@ public:
     void setDHT22CalibrationOffset(float tempOffset, float humidityOffset);
     void setSoilMoistureCalibrationOffset(float dryValue, float wetValue);
     void setRainGaugeTipVolume(float volume);
+    String generateApiUrl(const String &tripletId);
     
     // Task control
     bool startReadingTask();
