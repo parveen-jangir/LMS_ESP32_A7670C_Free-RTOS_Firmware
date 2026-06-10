@@ -97,14 +97,26 @@ Browser sends an empty request; ESP32 responds with a full snapshot of every sen
 {
   "type": "sensor_broadcast",
   "status": "ok",
+  "dht22": {
+    "temperature": 23.7,
+    "humidity": 56.6,
+    "valid": true,
+    "state": true
+  },
+  "bh1750": {
+    "illuminance": 15.83333,
+    "valid": true,
+    "state": true
+  },
   "bmp180": {
     "temperature": 23.5,
     "pressure": 895.45,
     "valid": true,
     "state": true
   },
-  "bh1750": {
-    "illuminance": 15.83333,
+  "soil_moisture": {
+    "raw": 3091,
+    "percentage": 75.48229,
     "valid": true,
     "state": true
   },
@@ -124,24 +136,17 @@ Browser sends an empty request; ESP32 responds with a full snapshot of every sen
     "valid": true,
     "state": true
   },
-  "dht22": {
-    "temperature": 23.7,
-    "humidity": 56.6,
-    "valid": true,
-    "state": true
-  },
-  "soil_moisture": {
-    "raw": 3091,
-    "percentage": 75.48229,
-    "valid": true,
-    "state": true
-  },
   "rain_gauge": {
     "tip_count": 0,
     "rainfall_mm": 0,
     "last_tip_time": 0,
     "valid": true,
     "state": true
+  },
+  "sensor_health": {
+    "soil_v": 3.28,
+    "weather_v": 0.00,
+    "mpu_v": 4.12
   }
 }
 ```
