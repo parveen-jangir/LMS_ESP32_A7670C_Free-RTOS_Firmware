@@ -15,10 +15,294 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            display: block;
+            padding: 20px;
+        }
+
+        /* Welcome Modal Styles */
+        .welcome-modal {
             display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            z-index: 1000;
+        }
+
+        .welcome-modal.hidden {
+            display: none;
+        }
+
+        .welcome-modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .welcome-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .welcome-header h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .welcome-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .system-list {
+            margin-bottom: 25px;
+        }
+
+        .system-list-label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .system-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .system-option {
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            background: white;
+            transition: all 0.2s;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .system-option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .system-option input[type="radio"] {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .system-option label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .divider-text {
+            text-align: center;
+            color: #999;
+            margin: 20px 0;
+            font-size: 12px;
+            position: relative;
+        }
+
+        .divider-text::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            background: #e0e0e0;
+            z-index: -1;
+        }
+
+        .divider-text span {
+            background: white;
+            padding: 0 10px;
+        }
+
+        .custom-system {
+            margin-bottom: 20px;
+        }
+
+        .custom-system input[type="radio"] {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .custom-system-label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .custom-system-inputs {
+            margin-left: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .custom-system-inputs input {
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .custom-system-inputs input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .welcome-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .welcome-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .welcome-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .welcome-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .welcome-btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Page Navigation */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .page-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-nav button {
+            padding: 8px 15px;
+            font-size: 13px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #f0f0f0;
+            color: #333;
+            transition: all 0.2s;
+        }
+
+        .page-nav button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .page-nav button:hover:not(.active) {
+            background: #e0e0e0;
+        }
+
+        .system-info-display {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .system-info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+
+        .system-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .system-info-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .system-info-value {
+            color: #666;
+            font-family: 'Courier New', monospace;
+        }
+
+        .page-nav-btn {
+            padding: 8px 15px;
+            font-size: 13px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            background: white;
+            color: #333;
+            transition: all 0.2s;
+        }
+
+        .page-nav-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .page-nav-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
         }
 
         .container {
@@ -349,6 +633,92 @@
     </style>
 </head>
 <body>
+    <!-- Welcome Modal for System Selection -->
+    <div class="welcome-modal" id="welcomeModal">
+        <div class="welcome-modal-content">
+            <div class="welcome-header">
+                <h1>🌐 System Selection</h1>
+                <p>Select a system to communicate with</p>
+            </div>
+
+            <div class="system-list">
+                <label class="system-list-label">Available Systems:</label>
+                <div class="system-options">
+                    <label class="system-option">
+                        <input type="radio" name="system" value="t108" data-name="Kotropi">
+                        <span>🌾 Kotropi (t108)</span>
+                    </label>
+                    <label class="system-option">
+                        <input type="radio" name="system" value="t107" data-name="Parashar">
+                        <span>🚜 Parashar (t107)</span>
+                    </label>
+                    <label class="system-option">
+                        <input type="radio" name="system" value="t68" data-name="Gora Fam 1">
+                        <span>🏡 Gora Fam 1 (t68)</span>
+                    </label>
+                    <label class="system-option">
+                        <input type="radio" name="system" value="t41" data-name="Gora Fam 2">
+                        <span>🏡 Gora Fam 2 (t41)</span>
+                    </label>
+                    <label class="system-option">
+                        <input type="radio" name="system" value="t40" data-name="Gora Fam 3">
+                        <span>🏡 Gora Fam 3 (t40)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="divider-text">
+                <span>OR</span>
+            </div>
+
+            <div class="custom-system">
+                <label class="custom-system-label">
+                    <input type="radio" name="system" value="custom">
+                    <span>Custom System</span>
+                </label>
+                <div class="custom-system-inputs">
+                    <input type="text" id="customSystemName" placeholder="System Name" disabled>
+                    <input type="text" id="customSystemTid" placeholder="Device ID (e.g., t100)" disabled>
+                </div>
+            </div>
+
+            <div class="welcome-actions">
+                <button class="welcome-btn welcome-btn-primary" id="connectBtn" onclick="selectSystem()" disabled>
+                    Connect →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Header -->
+    <div style="width: 100%; max-width: 1400px; margin: 0 auto 20px; padding: 20px;">
+        <div class="system-info-display">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div style="flex: 1;">
+                    <div id="systemInfo" style="display: grid; gap: 8px;">
+                        <div class="system-info-item">
+                            <span class="system-info-label">System:</span>
+                            <span class="system-info-value">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="switchPage('page0')" id="page0Btn" class="page-nav-btn active">
+                        📊 Dashboard
+                    </button>
+                    <button onclick="switchPage('page1')" id="page1Btn" class="page-nav-btn">
+                        ℹ️ System Info
+                    </button>
+                    <button onclick="changeSystem()" style="padding: 10px 15px; font-size: 12px; background: #ff9800; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        🔄 Change System
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page 0: WebSocket Terminal -->
+    <div class="page active" id="page0">
     <div class="container">
         <!-- Left Panel: Messages and Commands -->
         <div class="card">
@@ -535,8 +905,95 @@
             </div>
         </div>
     </div>
+    </div>
+    <!-- End of Page 0 -->
+
+    <!-- Page 1: System Info Page -->
+    <div class="page" id="page1">
+    <div class="container" style="grid-template-columns: 1fr;">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">ℹ️ System Information</div>
+            </div>
+
+            <div style="display: grid; gap: 20px;">
+                <!-- Device Information -->
+                <div>
+                    <h3 style="margin-bottom: 15px; color: #333;">📱 Device Information</h3>
+                    <div id="deviceInfo" style="display: grid; gap: 10px;">
+                        <div class="system-info-item">
+                            <span class="system-info-label">System Name:</span>
+                            <span class="system-info-value" id="sysName">-</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Device ID:</span>
+                            <span class="system-info-value" id="sysTid">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MQTT Topics -->
+                <div>
+                    <h3 style="margin-bottom: 15px; color: #333;">📡 MQTT Configuration</h3>
+                    <div id="mqttInfo" style="display: grid; gap: 10px;">
+                        <div class="system-info-item">
+                            <span class="system-info-label">Send Topic:</span>
+                            <span class="system-info-value" id="topicSend" style="font-size: 12px; word-break: break-all;">-</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Callback Topic:</span>
+                            <span class="system-info-value" id="topicCallback" style="font-size: 12px; word-break: break-all;">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connection Status -->
+                <div>
+                    <h3 style="margin-bottom: 15px; color: #333;">🔌 Connection Status</h3>
+                    <div style="display: grid; gap: 10px;">
+                        <div class="system-info-item">
+                            <span class="system-info-label">WebSocket Status:</span>
+                            <span class="system-info-value">
+                                <span id="wsStatus" style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #ff4444; margin-right: 5px;"></span>
+                                <span id="wsStatusText">Disconnected</span>
+                            </span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Connection Time:</span>
+                            <span class="system-info-value" id="connTime">-</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Messages Sent:</span>
+                            <span class="system-info-value" id="msgSent">0</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Messages Received:</span>
+                            <span class="system-info-value" id="msgRecv">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <!-- End of Page 1 -->
 
     <script>
+        // ==================== Global System Variables ====================
+        let selectedSystemTid = null;
+        let selectedSystemName = null;
+        let mqttTopicSend = null;
+        let mqttTopicCallback = null;
+
+        // ==================== System Configuration ====================
+        const PREDEFINED_SYSTEMS = {
+            't108': { name: 'Kotropi', emoji: '🌾' },
+            't107': { name: 'Parashar', emoji: '🚜' },
+            't68': { name: 'Gora Fam 1', emoji: '🏡' },
+            't41': { name: 'Gora Fam 2', emoji: '🏡' },
+            't40': { name: 'Gora Fam 3', emoji: '🏡' }
+        };
+
         // ==================== Configuration ====================
         const WS_URL = 'ws://192.168.4.1/ws';
         const RECONNECT_INTERVAL = 3000;  // 3 seconds
@@ -560,10 +1017,188 @@
 
         // ==================== Initialization ====================
         window.addEventListener('DOMContentLoaded', () => {
-            connectWebSocket();
+            initializeSystemSelection();
             updateConnectionTime();
             setInterval(updateConnectionTime, 1000);
         });
+
+        // ==================== System Selection Functions ====================
+        function initializeSystemSelection() {
+            const savedSystem = localStorage.getItem('selectedSystemTid');
+            const savedSystemName = localStorage.getItem('selectedSystemName');
+            
+            if (savedSystem && savedSystemName) {
+                selectedSystemTid = savedSystem;
+                selectedSystemName = savedSystemName;
+                generateMqttTopics();
+                hideWelcomeModal();
+                connectWebSocket();
+                updateSystemDisplay();
+            } else {
+                setupWelcomeModalListeners();
+            }
+        }
+
+        function setupWelcomeModalListeners() {
+            const systemRadios = document.querySelectorAll('input[name="system"]');
+            const customNameInput = document.getElementById('customSystemName');
+            const customTidInput = document.getElementById('customSystemTid');
+            const connectBtn = document.getElementById('connectBtn');
+
+            systemRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    const isCustom = e.target.value === 'custom';
+                    customNameInput.disabled = !isCustom;
+                    customTidInput.disabled = !isCustom;
+                    
+                    if (isCustom) {
+                        customNameInput.focus();
+                    }
+                    updateConnectButtonState();
+                });
+            });
+
+            customNameInput.addEventListener('input', updateConnectButtonState);
+            customTidInput.addEventListener('input', updateConnectButtonState);
+        }
+
+        function updateConnectButtonState() {
+            const systemRadios = document.querySelectorAll('input[name="system"]');
+            const selectedRadio = Array.from(systemRadios).find(r => r.checked);
+            const customNameInput = document.getElementById('customSystemName');
+            const customTidInput = document.getElementById('customSystemTid');
+            const connectBtn = document.getElementById('connectBtn');
+
+            let isValid = false;
+            if (selectedRadio) {
+                if (selectedRadio.value === 'custom') {
+                    isValid = customNameInput.value.trim() !== '' && customTidInput.value.trim() !== '';
+                } else {
+                    isValid = true;
+                }
+            }
+
+            connectBtn.disabled = !isValid;
+        }
+
+        function selectSystem() {
+            const systemRadios = document.querySelectorAll('input[name="system"]');
+            const selectedRadio = Array.from(systemRadios).find(r => r.checked);
+
+            if (!selectedRadio) return;
+
+            if (selectedRadio.value === 'custom') {
+                const customName = document.getElementById('customSystemName').value.trim();
+                const customTid = document.getElementById('customSystemTid').value.trim();
+
+                if (!customName || !customTid) {
+                    alert('Please enter both system name and device ID');
+                    return;
+                }
+
+                selectedSystemName = customName;
+                selectedSystemTid = customTid;
+            } else {
+                selectedSystemTid = selectedRadio.value;
+                selectedSystemName = selectedRadio.getAttribute('data-name');
+            }
+
+            localStorage.setItem('selectedSystemTid', selectedSystemTid);
+            localStorage.setItem('selectedSystemName', selectedSystemName);
+
+            generateMqttTopics();
+            hideWelcomeModal();
+            connectWebSocket();
+            updateSystemDisplay();
+        }
+
+        function generateMqttTopics() {
+            mqttTopicSend = `lms/devices/${selectedSystemTid}/configuration/send`;
+            mqttTopicCallback = `lms/devices/${selectedSystemTid}/configuration/callback`;
+        }
+
+        function hideWelcomeModal() {
+            const welcomeModal = document.getElementById('welcomeModal');
+            if (welcomeModal) {
+                welcomeModal.classList.add('hidden');
+            }
+        }
+
+        function updateSystemDisplay() {
+            const systemInfo = document.getElementById('systemInfo');
+            if (systemInfo) {
+                systemInfo.innerHTML = `
+                    <div class="system-info-item">
+                        <span class="system-info-label">System:</span>
+                        <span class="system-info-value">${selectedSystemName}</span>
+                    </div>
+                    <div class="system-info-item">
+                        <span class="system-info-label">Device ID:</span>
+                        <span class="system-info-value">${selectedSystemTid}</span>
+                    </div>
+                    <div class="system-info-item">
+                        <span class="system-info-label">Send Topic:</span>
+                        <span class="system-info-value">${mqttTopicSend}</span>
+                    </div>
+                    <div class="system-info-item">
+                        <span class="system-info-label">Callback Topic:</span>
+                        <span class="system-info-value">${mqttTopicCallback}</span>
+                    </div>
+                `;
+            }
+        }
+
+        function changeSystem() {
+            localStorage.removeItem('selectedSystemTid');
+            localStorage.removeItem('selectedSystemName');
+            selectedSystemTid = null;
+            selectedSystemName = null;
+            location.reload();
+        }
+
+        function switchPage(pageId) {
+            const pages = document.querySelectorAll('.page');
+            const navBtns = document.querySelectorAll('.page-nav-btn');
+            
+            pages.forEach(page => page.classList.remove('active'));
+            navBtns.forEach(btn => btn.classList.remove('active'));
+            
+            const selectedPage = document.getElementById(pageId);
+            if (selectedPage) {
+                selectedPage.classList.add('active');
+            }
+            
+            const btnId = pageId + 'Btn';
+            const selectedBtn = document.getElementById(btnId);
+            if (selectedBtn) {
+                selectedBtn.classList.add('active');
+            }
+
+            if (pageId === 'page1') {
+                updateSystemInfoPage();
+            }
+        }
+
+        function updateSystemInfoPage() {
+            document.getElementById('sysName').textContent = selectedSystemName || '-';
+            document.getElementById('sysTid').textContent = selectedSystemTid || '-';
+            document.getElementById('topicSend').textContent = mqttTopicSend || '-';
+            document.getElementById('topicCallback').textContent = mqttTopicCallback || '-';
+            
+            const wsStatusEl = document.getElementById('wsStatus');
+            const wsStatusText = document.getElementById('wsStatusText');
+            if (isConnected) {
+                wsStatusEl.style.backgroundColor = '#44ff44';
+                wsStatusText.textContent = 'Connected';
+            } else {
+                wsStatusEl.style.backgroundColor = '#ff4444';
+                wsStatusText.textContent = 'Disconnected';
+            }
+            
+            document.getElementById('connTime').textContent = document.getElementById('connectionTime').textContent;
+            document.getElementById('msgSent').textContent = messageCount.sent;
+            document.getElementById('msgRecv').textContent = messageCount.received;
+        }
 
         // ==================== WebSocket Connection ====================
         function connectWebSocket() {
