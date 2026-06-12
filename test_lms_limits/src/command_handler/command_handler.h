@@ -28,15 +28,27 @@ class CommandHandler
 public:
     CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem);
 
-    static void mqttCallback(const String &topic, const String &payload);
-    static void onSmsReceived(SmsMessage msg);
-    static void onIncomingCall(const String& number);
+    void onMqttMessage(const A7670C::MQTTMessage &msg);
+    void onHttpAction(const HttpResponse &response);
+    void onOtaProgress(int percent, int written, int total);
 
     ~CommandHandler();
 
+    String getDeviceMac() const
+    {
+        return _deviceMac;
+    }
+
+    String getTopic() const
+    {
+        return _topic;
+    }
+
     void begin();
 
-    void configSensors();
+    time_t getTime(String &formatted);
+
+    // void configSensors();
     void sendResponse(JsonDocument &response, bool webSoc = false, bool toMqtt = true);
 private:
     SensorManager &sensorMgr;
@@ -53,7 +65,7 @@ private:
     TaskHandle_t  apiHandle    = nullptr;
     TaskHandle_t  gsmHandle    = nullptr;
     static void workerTask(void *param);
-    static void gsmTask(void *param);
+    // static void gsmTask(void *param);
     static void apiTask(void *param);
     
     void        workerLoop();
@@ -71,5 +83,17 @@ private:
     bool getSystemInfo(JsonDocument &doc, bool fromBle, bool fromMqtt);
 
     bool enqueue(const char *jsonStr, size_t len, bool fromBle = false);
+
+    void handleMqttMessage(const A7670C::MQTTMessage &msg);
+    void handleBootEvent(const String &line);
+    void handleNetworkEvent(const String &line);
+    void handleHttpAction(const HttpResponse &response);
+
+    static CommandHandler *_instance;
+
+    static void mqttCallback(const A7670C::MQTTMessage &msg);
+    static void bootCallback(const String &line);
+    static void networkCallback(const String &line);
+    static void httpCallback(const HttpResponse &response);
 
 };

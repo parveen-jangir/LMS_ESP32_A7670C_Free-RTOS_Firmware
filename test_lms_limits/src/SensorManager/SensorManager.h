@@ -87,6 +87,7 @@ public:
     // Status
     void printSensorStatus();
     void printLastReadings();
+    void confSensorWithDefaults();
 };
 
 #endif // SENSOR_MANAGER_H

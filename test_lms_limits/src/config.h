@@ -1,6 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// ==================== General Configuration ====================
+#define DEVICE_NAME         "LMS_ESP32_01"
+#define FIRMWARE_VERSION    "1.0.0"
+
 // ==================== I2C Configuration ====================
 #define I2C_SDA_PIN       21
 #define I2C_SCL_PIN       22
@@ -41,6 +45,7 @@
 // ==================== Debug Configuration ====================
 #define DEBUG_ENABLED             1
 #define DEBUG_SERIAL_BAUDRATE     115200
+#define DEBUG_GSM_RX              false
 
 // ==================== Adafruit BMP085 Mode ====================
 #define BMP085_MODE               Adafruit_BMP085::BMP085_ULTRAHIGHRES  // Ultra high resolution
@@ -84,7 +89,7 @@
 #define SENSOR_TASK_PRIORITY      7
 #define SENSOR_TASK_CORE          1    // Core 1 for sensor tasks
 
-#define GSM_TASK_STACK_SIZE       4096
+#define GSM_TASK_STACK_SIZE       8192
 #define GSM_TASK_PRIORITY         6
 #define GSM_TASK_CORE             1    // Core 1 for GSM tasks
 

@@ -54,6 +54,19 @@ void setup()
 
     gsmSerial.begin(MODEM_BAUD_RATE, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
 
+    if (sensorManager.initialize())
+    {
+        Serial.println(F("[MAIN] Sensor initialized"));
+        sensorManager.confSensorWithDefaults();
+        sensorManager.printLastReadings();
+    }
+    else
+    {
+        Serial.println(F("[MAIN] Sensor initialization failed"));
+    }
+
+    modem.begin();
+
     cmdHandler.begin();
 
     gsmOta.onProgress(onProgress);
@@ -65,6 +78,13 @@ void setup()
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 void loop()
 {
+    vTaskDelay(pdMS_TO_TICKS(20000));
+
+    if(!modem.getMQTTConnected())
+    {
+        modem.mqttConnect();
+        modem.mqttSubscribe(cmdHandler.getTopic());
+    }
+    
     // sendLoraAlaram_old();
-    vTaskDelay(pdMS_TO_TICKS(1000));
 }

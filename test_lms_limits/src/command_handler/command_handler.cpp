@@ -1,41 +1,86 @@
 #include "command_handler.h"
 
-static CommandHandler *s_commandHandlerInstance = nullptr;
+CommandHandler *CommandHandler::_instance = nullptr;
 
-void CommandHandler::mqttCallback(const String &topic, const String &payload)
+void CommandHandler::mqttCallback(const A7670C::MQTTMessage &msg)
 {
-    Serial.println("  📨  MQTT MESSAGE RECEIVED");
-    Serial.println("  Topic   : " + topic);
-    Serial.println("  Payload : " + payload);
+    if (_instance)
+        _instance->handleMqttMessage(msg);
+}
 
-    if (!s_commandHandlerInstance || !s_commandHandlerInstance->enqueue(payload.c_str(), payload.length(), false))
+void CommandHandler::bootCallback(const String &line)
+{
+    if (_instance)
+        _instance->handleBootEvent(line);
+}
+
+void CommandHandler::networkCallback(const String &line)
+{
+    if (_instance)
+        _instance->handleNetworkEvent(line);
+}
+
+void CommandHandler::httpCallback(const HttpResponse &response)
+{
+    if (_instance)
+        _instance->handleHttpAction(response);
+}
+
+void CommandHandler::handleMqttMessage(const A7670C::MQTTMessage &msg)
+{
+    Serial.println("======== MQTT MESSAGE =========");
+    Serial.println("  Topic  : " + msg.topic);
+    Serial.println("  Payload: " + msg.payload);
+    Serial.println("================================");
+
+    // Enqueue for processing in worker task
+    if (!enqueue(msg.payload.c_str(), msg.payload.length(), false))
     {
-        Serial.println(F("[CMD] mqttCallback: queue full"));
+        Serial.println(F("[CMD] Failed enqueue command"));
     }
 }
 
-void CommandHandler::onSmsReceived(SmsMessage msg)
+void CommandHandler::handleBootEvent(const String &line)
 {
-    Serial.println("  📩  INCOMING SMS");
-    Serial.println("  From      : " + msg.sender);
-    Serial.println("  Timestamp : " + msg.timestamp);
-    Serial.println("  Status    : " + msg.status);
-    Serial.println("  Text      : " + msg.text);
+    Serial.println("[BOOT] " + line);
 }
 
-void CommandHandler::onIncomingCall(const String &number)
+void CommandHandler::handleNetworkEvent(const String &line)
 {
-    Serial.println("  📞  INCOMING CALL");
-    Serial.println("  From : " + (number.isEmpty() ? "Unknown / withheld" : number));
-    Serial.println();
-    Serial.println("  Type  A  → Answer");
-    Serial.println("  Type  H  → Reject / Hang up");
+    Serial.println("[NET] " + line);
+}
+
+void CommandHandler::handleHttpAction(const HttpResponse &response)
+{
+    Serial.println("[HTTP] Action: " + String(response.statusCode));
+
+    Serial.println("        Success: " + String(response.success ? "YES" : "NO"));
+    Serial.println("        Data length: " + String(response.dataLength) + " bytes");
+    Serial.println("        Response code: " + String(response.statusCode));
+}
+
+void CommandHandler::onMqttMessage(const A7670C::MQTTMessage &msg)
+{
+    Serial.println(msg.topic);
+}
+
+void CommandHandler::onHttpAction(const HttpResponse &response)
+{
+    Serial.println(response.statusCode);
+}
+
+void CommandHandler::onOtaProgress(int percent, int written, int total)
+{
+    JsonDocument doc;
+    doc["type"] = "ota_progress";
+    doc["progress"] = percent;
+
+    sendResponse(doc, true, true);
 }
 
 CommandHandler::CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem)
     : sensorMgr(sensorMgr), storageMgr(storageMgr), gsmOta(gsmOta), modem(modem)
 {
-    s_commandHandlerInstance = this;
     cmdQueue = xQueueCreate(COMMAND_QUEUE_DEPTH, sizeof(commandFormat));
     configASSERT(cmdQueue);
 }
@@ -60,7 +105,7 @@ void CommandHandler::buildDeviceMac()
         _deviceMac += String(mac[i], HEX);
     }
 
-    Serial.println("Device MAC: " + _deviceMac);
+    Serial.println("[DEVICE] MAC: " + _deviceMac);
 }
 
 void CommandHandler::buildTopic()
@@ -107,6 +152,13 @@ CommandHandler::~CommandHandler()
 
 void CommandHandler::begin()
 {
+    _instance = this;
+    
+    modem.onMqttMessage(mqttCallback);
+    modem.onBootEvent(bootCallback);
+    modem.onNetworkEvent(networkCallback);
+    modem.onHttpAction(httpCallback);
+
     xTaskCreate(
         workerTask,
         "CmdWorker",
@@ -115,45 +167,14 @@ void CommandHandler::begin()
         COMMAND_TASK_PRIORITY,
         &workerHandle);
 
-    xTaskCreate(
-        gsmTask,
-        "GsmWorker",
-        GSM_TASK_STACK_SIZE,
-        this,
-        GSM_TASK_PRIORITY,
-        &gsmHandle);
-
-    modem.onMqttMessage(mqttCallback);
-    modem.onSms(onSmsReceived);
-    modem.onRing(onIncomingCall);
-
-    // Enable AT traffic debug output
-    modem.setDebug(Serial);
-    modem.setDebugEnabled(true); // ← set false to hide raw AT traffic
+    // // Enable AT traffic debug output
+    // modem.setDebug(Serial);
+    // modem.setDebugEnabled(true); // ← set false to hide raw AT traffic
 
     buildDeviceMac();
     buildTopic();
 
-    if (!modem.begin())
-    {
-        Serial.println("[GSM] Failed initialization");
-    }
-    else
-    {
-        Serial.println("[GSM] Modem initialized");
-        setupMqtt();
-    }
-
-    if (sensorMgr.initialize())
-    {
-        Serial.println(F("[MAIN] Sensor initialized"));
-        sensorMgr.printSensorStatus();
-        configSensors();
-    }
-    else
-    {
-        Serial.println(F("[MAIN] Sensor initialization failed"));
-    }
+    setupMqtt();
 
     xTaskCreate(
         apiTask,
@@ -164,48 +185,24 @@ void CommandHandler::begin()
         &apiHandle);
 }
 
-void printResult(A7670C_Result r)
-{
-    switch (r)
-    {
-    case A7670C_Result::OK:
-        Serial.println("OK");
-        break;
-    case A7670C_Result::ERROR:
-        Serial.println("ERROR");
-        break;
-    case A7670C_Result::TIMEOUT:
-        Serial.println("TIMEOUT");
-        break;
-    case A7670C_Result::HTTP_ERROR:
-        Serial.println("HTTP_ERROR");
-        break;
-    case A7670C_Result::MQTT_ERROR:
-        Serial.println("MQTT_ERROR");
-        break;
-    default:
-        Serial.println("UNKNOWN");
-        break;
-    }
-}
-
 void CommandHandler::setupMqtt()
 {
-    A7670C_Result res = modem.mqttConfigure(_deviceMac, MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASS);
-    vTaskDelay(500 / portTICK_PERIOD_MS);
-    res = modem.mqttConnect();
-    vTaskDelay(500 / portTICK_PERIOD_MS);
-    res = modem.mqttSubscribe(_topic, 0);
+    modem.configureMqtt(
+        _deviceMac, // client ID
+        "76.13.243.127", // host
+        1883,            // port
+        "lms_mqtt_broker",
+        "landslidemonitoringsystem");
 
-    Serial.print("[CMD] MQTT Configure Result: ");
-    printResult(res);
-
-    if (res == A7670C_Result::OK)
+    if (modem.mqttConnect())
     {
-        JsonDocument doc;
-        doc["status"] = "ok";
-        doc["message"] = "[MQTT] Live";
-        sendResponse(doc, true, true);
+        if (modem.mqttSubscribe(_topic))
+        {
+            JsonDocument doc;
+            doc["status"] = "ok";
+            doc["message"] = "[MQTT] Live";
+            sendResponse(doc, true, true);
+        }
     }
 }
 
@@ -222,16 +219,16 @@ void CommandHandler::workerTask(void *param)
 }
 
 // ── GSM animation task ───────────────────────────────────────────────────────
-void CommandHandler::gsmTask(void *param)
-{
-    CommandHandler *self = static_cast<CommandHandler *>(param);
-    while (true)
-    {
-        self->modem.loop();
-        vTaskDelay(pdMS_TO_TICKS(70));
-    }
-    vTaskDelete(nullptr);
-}
+// void CommandHandler::gsmTask(void *param)
+// {
+//     CommandHandler *self = static_cast<CommandHandler *>(param);
+//     while (true)
+//     {
+//         // self->modem.loop();
+//         vTaskDelay(pdMS_TO_TICKS(70));
+//     }
+//     vTaskDelete(nullptr);
+// }
 
 void CommandHandler::workerLoop()
 {
@@ -259,16 +256,9 @@ void CommandHandler::apiTask(void *param)
     while (true)
     {
         String apiUrl = self->sensorMgr.generateApiUrl(self->tid);
-        Serial.println(apiUrl);
+        Serial.println("[API] URL: " + apiUrl);
 
-        HttpResponse response;
-
-        response = self->modem.httpGet(apiUrl);
-
-        Serial.print("[API] GET ");
-        printResult(response.success ? A7670C_Result::OK : A7670C_Result::HTTP_ERROR);
-        Serial.println("  Status Code: " + String(response.statusCode));
-        Serial.println("  Body: " + response.body);
+        self->modem.hitHttpGetRequest(apiUrl);
 
         vTaskDelay(pdMS_TO_TICKS(API_HIT_INTERVAL_MS));
     }
@@ -394,55 +384,15 @@ void CommandHandler::sendResponse(JsonDocument &response, bool toBle, bool toMqt
     {
     }
 
-    if (toMqtt)
+    if (modem.getMQTTConnected() && toMqtt)
     {
-        if (modem.mqttPublish(topic, payload) != A7670C_Result::OK)
+        if (!modem.mqttPublish(topic, payload))
         {
             Serial.println(F("[CMD] sendResponse(MQTT): publish failed"));
         }
     }
 
     Serial.print(("[CMD] sendResponse: " + payload + "\n"));
-}
-
-void CommandHandler::configSensors()
-{
-    // Default calibration setup
-    Serial.println("[SENS] CONFIGURING SENSORS...");
-
-    // BMP180 calibration
-    sensorMgr.setBMP180CalibrationOffset(0.0, 0.0);
-
-    // BH1750 calibration
-    sensorMgr.setBH1750CalibrationOffset(0.0);
-
-    // MPU6050 calibration
-    sensorMgr.setMPU6050CalibrationOffset(
-        0.0, 0.0, 0.0, // Accel offsets
-        0.0, 0.0, 0.0, // Gyro offsets
-        0.0            // Temp offset
-    );
-
-    // DHT22 calibration
-    sensorMgr.setDHT22CalibrationOffset(0.0, 0.0);
-
-    // Soil Moisture calibration (0=dry, 4095=wet)
-    sensorMgr.setSoilMoistureCalibrationOffset(0, 4095);
-
-    // Rain Gauge calibration (0.2794 mm per tip)
-    sensorMgr.setRainGaugeTipVolume(0.2794);
-
-    // Set read interval
-    sensorMgr.setReadInterval(5000);
-
-    Serial.println("[SENS] CONFIG DONE");
-    // Start continuous reading task
-    if (!sensorMgr.startReadingTask())
-    {
-        Serial.println("[SENS][ERROR] Failed to start sensor task!");
-    }
-
-    sensorMgr.printSensorStatus();
 }
 
 void CommandHandler::handleSensorState(JsonDocument &doc, bool fromBle, bool fromMqtt)
@@ -478,11 +428,45 @@ void CommandHandler::handleSensorBroadcast(JsonDocument &doc, bool fromBle, bool
 
 bool CommandHandler::getSystemInfo(JsonDocument &doc, bool fromBle, bool fromMqtt)
 {
+    int rssi;
+    String time;
+    getTime(time);
+    modem.getSignalStrength(rssi);
+
     doc["uptime_s"] = esp_timer_get_time() / 1000000ULL;
     doc["free_heap"] = ESP.getFreeHeap();
+    doc["gsm_signal"] = rssi;
+    doc["mqtt_connected"] = modem.getMQTTConnected();
+    doc["device_mac"] = _deviceMac;
+    doc["firmware_version"] = FIRMWARE_VERSION;
+    doc["device_name"] = DEVICE_NAME;
+    doc["current_time"] = time;
 
     doc["status"] = "ok";
     doc["msg"] = "System information retrieved";
 
     return true;
+}
+
+time_t CommandHandler::getTime(String &formatted)
+{
+    time_t now = time(nullptr);
+    if (now < 0)
+        return -1;
+
+    time_t ist = now + (5 * 3600) + (30 * 60);
+
+    struct tm *t = gmtime(&ist);
+
+    char buf[24];
+    snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d",
+        t->tm_year + 1900,
+        t->tm_mon  + 1,
+        t->tm_mday,
+        t->tm_hour,
+        t->tm_min,
+        t->tm_sec);
+
+    formatted = buf;
+    return ist;
 }
