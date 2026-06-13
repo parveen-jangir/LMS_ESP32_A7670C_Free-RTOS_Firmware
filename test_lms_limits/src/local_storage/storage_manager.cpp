@@ -4,6 +4,10 @@
 
 #include "storage_manager.h"
 
+StorageManager::StorageManager(DataLogger &dataLogger) : dataLogger(dataLogger)
+{
+}
+
 bool StorageManager::begin(bool formatOnFail)
 {
     if (!SPIFFS.begin(formatOnFail))

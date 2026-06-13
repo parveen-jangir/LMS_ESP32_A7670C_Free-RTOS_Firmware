@@ -60,8 +60,10 @@ bool DataLogger::begin(const char* logFile, const char* idxFile, size_t maxFileS
 // log
 // ---------------------------------------------------------------------------
 
-bool DataLogger::log(const String& timestamp, char level, const String& message)
+bool DataLogger::log(char level, const String& message)
 {
+    String timestamp = getFromatedTime();
+    
     MutexGuard guard(_mutex);
 
     // Try compaction before checking fullness
@@ -312,4 +314,29 @@ bool DataLogger::_doCompact()
 
     _uploadedOffset = 0;
     return _saveOffset(0);
+}
+
+String DataLogger::getFromatedTime()
+{
+    time_t now = time(nullptr);
+    if (now < 0)
+        return "0000,000000";
+
+    time_t ist = now + (5 * 3600) + (30 * 60);
+
+    struct tm *t = gmtime(&ist);
+
+    struct tm timeinfo;
+    localtime_r(&ist, &timeinfo);
+
+    char buffer[16];
+    snprintf(buffer, sizeof(buffer),
+             "%02d%02d,%02d%02d%02d",
+             timeinfo.tm_mon + 1, // Month (1-12)
+             timeinfo.tm_mday,    // Day (1-31)
+             timeinfo.tm_hour,    // Hour (00-23)
+             timeinfo.tm_min,     // Minute (00-59)
+             timeinfo.tm_sec);    // Second (00-59)
+
+    return String(buffer);
 }

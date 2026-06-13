@@ -2,6 +2,18 @@
 
 CommandHandler *CommandHandler::_instance = nullptr;
 
+time_t getTime()
+{
+    time_t now = time(nullptr);
+    if (now < 0)
+        return -1;
+
+    time_t ist = now + (5 * 3600) + (30 * 60);
+
+    struct tm *t = gmtime(&ist);
+    return ist;
+}
+
 void CommandHandler::mqttCallback(const A7670C::MQTTMessage &msg)
 {
     if (_instance)
@@ -43,11 +55,13 @@ void CommandHandler::handleMqttMessage(const A7670C::MQTTMessage &msg)
 void CommandHandler::handleBootEvent(const String &line)
 {
     Serial.println("[BOOT] " + line);
+    logger.log('I', "[BOOT] " + line);
 }
 
 void CommandHandler::handleNetworkEvent(const String &line)
 {
     Serial.println("[NET] " + line);
+    logger.log('I', "[NET] " + line);
 }
 
 void CommandHandler::handleHttpAction(const HttpResponse &response)
@@ -57,6 +71,7 @@ void CommandHandler::handleHttpAction(const HttpResponse &response)
     Serial.println("        Success: " + String(response.success ? "YES" : "NO"));
     Serial.println("        Data length: " + String(response.dataLength) + " bytes");
     Serial.println("        Response code: " + String(response.statusCode));
+    logger.log('I', "[HTTP] Action: " + String(response.statusCode));
 }
 
 void CommandHandler::onMqttMessage(const A7670C::MQTTMessage &msg)
@@ -78,8 +93,8 @@ void CommandHandler::onOtaProgress(int percent, int written, int total)
     sendResponse(doc, true, true);
 }
 
-CommandHandler::CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem)
-    : sensorMgr(sensorMgr), storageMgr(storageMgr), gsmOta(gsmOta), modem(modem)
+CommandHandler::CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem, DataLogger &dataLogger)
+    : sensorMgr(sensorMgr), storageMgr(storageMgr), gsmOta(gsmOta), modem(modem), logger(dataLogger)
 {
     cmdQueue = xQueueCreate(COMMAND_QUEUE_DEPTH, sizeof(commandFormat));
     configASSERT(cmdQueue);
@@ -272,8 +287,12 @@ void CommandHandler::dispatch(const commandFormat &pkt)
         return;
     }
 
+    
     // Every command must have a "type" field.
     const char *cmdStr = doc["type"] | "";
+
+    logger.log('I', cmdStr);
+
     if (cmdStr[0] == '\0')
     {
         Serial.println(F("[CMD] dispatch: missing 'type' field"));
@@ -314,6 +333,52 @@ void CommandHandler::dispatch(const commandFormat &pkt)
     else if (strcmp(cmdStr, "update_device") == 0)
     {
         handleOtaUpdate(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if (strcmp(cmdStr, "log_data") == 0)
+    {
+        size_t sz = 1024;
+        PacketData lastPacket;
+        bool lastPacketPending = false;
+        Serial.print("GET PACKET");
+        lastPacket = logger.getPacket(sz);
+        lastPacketPending = (lastPacket.packetSize > 0);
+
+        if (lastPacket.packetSize == 0)
+        {
+            Serial.println("  (no pending data)");
+            return;
+        }
+
+        Serial.printf("  Offset range : [%u .. %u]\n", lastPacket.startOffset, lastPacket.endOffset);
+        Serial.printf("  Packet size  : %u B\n", lastPacket.packetSize);
+        Serial.println("  --- payload ---");
+        Serial.print(lastPacket.data);
+        Serial.println("  ---------------");
+    }
+    else if (strcmp(cmdStr, "log_info") == 0)
+    {
+        Serial.println("  --- Log Info ---");
+        LoggerInfo info = logger.getInfo();
+        Serial.printf("  File size    : %u B\n", info.currentSize);
+        Serial.printf("  Max size     : %u B\n", info.maxSize);
+        Serial.printf("  Uploaded off : %u B\n", info.uploadedOffset);
+        Serial.printf("  Pending      : %u B\n", info.pendingBytes);
+        Serial.printf("  Full         : %s\n", info.full ? "YES !!!" : "no");
+        Serial.println("  ---------------");
+    }
+    else if (strcmp(cmdStr, "log_clear") == 0)
+    {
+        PacketData lastPacket        = logger.getPacket(1024);
+        // if (!lastPacketPending)
+        // {
+        //     Serial.println("  No packet pending – run 'packet' first.");
+        //     return;
+        // }
+        bool ok = logger.markUploaded(lastPacket.endOffset);
+        Serial.printf("  markUploaded(%u) -> %s\n", lastPacket.endOffset, ok ? "OK" : "FAIL");
+        // lastPacketPending = false;
+        // printInfo();
+        Serial.println("STRESS DONE");
     }
     else if(strcmp(cmdStr, "reboot") == 0)
     {
@@ -387,7 +452,7 @@ bool CommandHandler::getSystemInfo(JsonDocument &doc, bool fromBle, bool fromMqt
 {
     int rssi;
     String time;
-    getTime(time);
+    getTimeStr(time);
     modem.getSignalStrength(rssi);
 
     doc["uptime_s"] = esp_timer_get_time() / 1000000ULL;
@@ -405,7 +470,7 @@ bool CommandHandler::getSystemInfo(JsonDocument &doc, bool fromBle, bool fromMqt
     return true;
 }
 
-time_t CommandHandler::getTime(String &formatted)
+time_t CommandHandler::getTimeStr(String &formatted)
 {
     time_t now = time(nullptr);
     if (now < 0)

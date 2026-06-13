@@ -6,10 +6,13 @@
 #include <ArduinoJson.h>
 #include <vector>
 #include <Preferences.h>
+#include "DataLogger/DataLogger.h"
 
 class StorageManager
 {
 public:
+    StorageManager( DataLogger &dataLogger);
+
     bool isSensorState(String sensorName);
     bool setSensorState(String sensorName, bool isEnabled);
 
@@ -28,6 +31,7 @@ public:
     size_t freeSpace();
 
 private:
+    DataLogger &dataLogger;
     bool writeJsonToFile(const String &path, const JsonDocument &doc);
     
     Preferences pref;

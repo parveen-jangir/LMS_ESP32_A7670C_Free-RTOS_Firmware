@@ -44,7 +44,7 @@ public:
     );
 
     // Append one log entry.  Returns false when logger is full.
-    bool log(const String& timestamp, char level, const String& message);
+    bool log(char level, const String& message);
 
     // True when no more entries can be stored.
     bool isFull();
@@ -64,6 +64,8 @@ public:
 
     // Explicit compaction (also called internally).
     bool compact();
+
+    String getFromatedTime();
 
 private:
     // Internal helpers – must be called with mutex already held

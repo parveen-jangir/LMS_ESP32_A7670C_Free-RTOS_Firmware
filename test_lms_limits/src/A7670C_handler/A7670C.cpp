@@ -3,9 +3,11 @@
 // ─────────────────────────────────────────────────────────────────
 // Constructor
 // ─────────────────────────────────────────────────────────────────
-A7670C::A7670C(HardwareSerial &serial, int pwrPin)
+A7670C::A7670C(HardwareSerial &serial, int pwrPin, DataLogger &dataLogger):
+    _serial(&serial), _pwrPin(pwrPin), logger(dataLogger)
 {
-    _serial = &serial;
+    // _serial = &serial;
+    // _dataLogger = dataLogger;
 
     _mqttCallback = nullptr;
     _smsCallback = nullptr;
@@ -21,7 +23,7 @@ A7670C::A7670C(HardwareSerial &serial, int pwrPin)
     _mqttPort = 1883;
     _mqttConnected = false;
     _httpInAction = false;
-    _pwrPin = pwrPin;
+    // _pwrPin = pwrPin;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -154,6 +156,7 @@ bool A7670C::mqttStart()
     if (result.startsWith("ERROR"))
     {
         Serial.println("[MQTT] Already started");
+        logger.log('I', "[MQTT] Already started");
         return false;
     }
 
@@ -246,6 +249,7 @@ bool A7670C::mqttConnect()
     if (!_mqttAcquire())
     {
         Serial.println("[MQTT] CMQTTACCQ failed");
+        logger.log('E', "[MQTT] CMQTTACCQ failed");
         return false;
     }
 
@@ -271,6 +275,7 @@ bool A7670C::mqttConnect()
     if (!ok)
     {
         Serial.println("[MQTT] CMQTTCONNECT timeout");
+        logger.log('E', "[MQTT] CMQTTCONNECT timeout");
         return false;
     }
 
@@ -284,6 +289,7 @@ bool A7670C::mqttConnect()
     if (result.startsWith("ERROR"))
     {
         Serial.println("[MQTT] broker error");
+        logger.log('E', "[MQTT] broker error");
         return false;
     }
 
@@ -297,10 +303,12 @@ bool A7670C::mqttConnect()
     if (code != 0)
     {
         Serial.println("[MQTT] Connect error code: " + String(code));
+        logger.log('E', "[MQTT] Connect error code: " + String(code));
         return false;
     }
 
     Serial.println("[MQTT] Connected");
+    logger.log('I', "[MQTT] Connected");
 
     _mqttConnected = true;
     return true;
@@ -377,6 +385,7 @@ bool A7670C::mqttSubscribe(const String &topic)
     if (!_sendPromptData(topic))
     {
         Serial.println("[MQTT] SUBTOPIC prompt failed");
+        logger.log('E', "[MQTT] SUBTOPIC failed");
         return false;
     }
 
@@ -411,11 +420,13 @@ bool A7670C::mqttSubscribe(const String &topic)
     if(result.substring(comma + 1).toInt() == 0)
     {
         Serial.println("[MQTT] Topic subscribed");
+        logger.log('I', "[MQTT] Topic subscribed");
         return true;
     }
     else
     {
         Serial.println("[MQTT] Subscription failed");
+        logger.log('E', "[MQTT] Subs failed");
         return false;
     }
 }

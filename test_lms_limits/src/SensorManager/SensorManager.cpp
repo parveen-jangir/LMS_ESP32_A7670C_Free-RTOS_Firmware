@@ -1,7 +1,7 @@
 #include "SensorManager.h"
 
-SensorManager::SensorManager()
-    : sensorTaskHandle(nullptr), dataMutex(nullptr),
+SensorManager::SensorManager(DataLogger &dataLogger)
+    : dataLogger(dataLogger), sensorTaskHandle(nullptr), dataMutex(nullptr),
       readIntervalMs(SENSOR_READ_INTERVAL_MS), taskRunning(false),
       bmp180Enabled(true), bh1750Enabled(true), mpu6050Enabled(true),
       dht22Enabled(true), soilMoistureEnabled(true), rainGaugeEnabled(true) {

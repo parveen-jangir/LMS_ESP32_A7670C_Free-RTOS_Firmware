@@ -8,16 +8,18 @@
 #include "command_handler/command_handler.h"
 #include "GSM_OTA/GSM_OTA.h"
 #include "LORA_Handler/LORA_Handler.h"
-#include "A7670C/A7670C.h"
+#include "A7670C_handler/A7670C.h"
 #include "config.h"
+#include "DataLogger/DataLogger.h"
 
 HardwareSerial gsmSerial(2);
 
-SensorManager sensorManager;
-GSM_OTA gsmOta(gsmSerial, Serial);
-StorageManager STManager;
-A7670C modem(gsmSerial, MODEM_PWR_PIN);
-CommandHandler cmdHandler(sensorManager, STManager, gsmOta, modem);
+DataLogger dataLogger;
+StorageManager STManager(dataLogger);
+SensorManager sensorManager(dataLogger);
+GSM_OTA gsmOta(gsmSerial, Serial, dataLogger);
+A7670C modem(gsmSerial, MODEM_PWR_PIN, dataLogger);
+CommandHandler cmdHandler(sensorManager, STManager, gsmOta, modem, dataLogger);
 
 // static int lastReportedPercent = 0;
 
@@ -50,9 +52,18 @@ void setup()
     delay(200);
 
     Serial.println("\n=== LANDSLIDE MONITORING SYSTEM ===");
-    Serial.println(F("Initializing Sensor Manager..."));
 
     gsmSerial.begin(MODEM_BAUD_RATE, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
+
+    if (!dataLogger.begin("/system.log", "/system.idx", 65536))
+    {
+        Serial.println("[LOGGER] Failed to initialize");
+    }
+    else
+    {
+        Serial.println("[LOGGER] Initialized");
+        dataLogger.log('I', "[BOOT] Device booted");
+    }
 
     if (sensorManager.initialize())
     {

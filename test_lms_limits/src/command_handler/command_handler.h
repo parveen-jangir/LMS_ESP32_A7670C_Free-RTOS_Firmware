@@ -12,8 +12,9 @@
 #include "SensorManager/SensorManager.h"
 #include "local_storage/storage_manager.h"
 #include "GSM_OTA/GSM_OTA.h"
-#include "A7670C/A7670C.h"
+#include "A7670C_handler/A7670C.h"
 #include "config.h"
+#include "DataLogger/DataLogger.h"
 
 struct commandFormat
 {
@@ -23,10 +24,12 @@ struct commandFormat
     bool formMqtt;
 };
 
+extern time_t getTime(String *formatted);
+
 class CommandHandler
 {
 public:
-    CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem);
+    CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem, DataLogger &dataLogger);
 
     void onMqttMessage(const A7670C::MQTTMessage &msg);
     void onHttpAction(const HttpResponse &response);
@@ -46,7 +49,7 @@ public:
 
     void begin();
 
-    time_t getTime(String &formatted);
+    time_t getTimeStr(String &formatted);
 
     // void configSensors();
     void sendResponse(JsonDocument &response, bool webSoc = false, bool toMqtt = true);
@@ -55,6 +58,7 @@ private:
     StorageManager &storageMgr;
     GSM_OTA &gsmOta;
     A7670C &modem;
+    DataLogger &logger;
     String _deviceMac;
     String _topic;
     String tid = DEFAULT_TID;

@@ -7,12 +7,15 @@
 #include <freertos/semphr.h>
 #include <time.h>
 #include "config.h"
+#include "DataLogger/DataLogger.h"
 
 struct HttpResponse {
     int  statusCode;
     int  dataLength;
     bool success;
 };
+
+time_t getTime();
 
 class A7670C
 {
@@ -35,7 +38,7 @@ public:
 
     typedef std::function<bool(const String &)> LineMatcher;
 
-    A7670C(HardwareSerial &serial, int pwrPin);
+    A7670C(HardwareSerial &serial, int pwrPin, DataLogger &dataLogger);
 
     bool begin();
 
@@ -121,6 +124,8 @@ public:
 private: 
     int _pwrPin;
     bool _isPoweredOn;
+
+    DataLogger &logger;
 
     // Fixed-size queue item — safe to copy through FreeRTOS queue
     struct QueueItem
