@@ -63,7 +63,6 @@ private:
     QueueHandle_t cmdQueue     = nullptr;
     TaskHandle_t  workerHandle = nullptr;
     TaskHandle_t  apiHandle    = nullptr;
-    TaskHandle_t  gsmHandle    = nullptr;
     static void workerTask(void *param);
     // static void gsmTask(void *param);
     static void apiTask(void *param);
@@ -88,6 +87,7 @@ private:
     void handleBootEvent(const String &line);
     void handleNetworkEvent(const String &line);
     void handleHttpAction(const HttpResponse &response);
+    void handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromMqtt);
 
     static CommandHandler *_instance;
 

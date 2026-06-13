@@ -189,10 +189,10 @@ void CommandHandler::setupMqtt()
 {
     modem.configureMqtt(
         _deviceMac, // client ID
-        "76.13.243.127", // host
-        1883,            // port
-        "lms_mqtt_broker",
-        "landslidemonitoringsystem");
+        MQTT_BROKER, // host
+        MQTT_PORT,            // port
+        MQTT_USER,
+        MQTT_PASS);
 
     if (modem.mqttConnect())
     {
@@ -218,17 +218,6 @@ void CommandHandler::workerTask(void *param)
     vTaskDelete(nullptr);
 }
 
-// ── GSM animation task ───────────────────────────────────────────────────────
-// void CommandHandler::gsmTask(void *param)
-// {
-//     CommandHandler *self = static_cast<CommandHandler *>(param);
-//     while (true)
-//     {
-//         // self->modem.loop();
-//         vTaskDelay(pdMS_TO_TICKS(70));
-//     }
-//     vTaskDelete(nullptr);
-// }
 
 void CommandHandler::workerLoop()
 {
@@ -324,39 +313,7 @@ void CommandHandler::dispatch(const commandFormat &pkt)
     }
     else if (strcmp(cmdStr, "update_device") == 0)
     {
-        modem.mqttDisconnect();
-        vTaskSuspend(apiHandle);
-        vTaskSuspend(gsmHandle);
-
-        gsmOta.setAPN(APN);
-        gsmOta.setChunkSize(1024); // optional – 1024 is default
-        gsmOta.setDebugEnabled(true);
-
-        String url = doc["url"] | OTA_URL;
-        OTAResult result = gsmOta.performOTA(url.c_str());
-
-        setupMqtt();
-        
-        if (result == OTA_SUCCESS)
-        {
-            Serial.println("[OTA] done! Rebooting in 3 s");
-            delay(3000);
-            doc["status"] = "ok";
-            doc["msg"] = "OTA successful, rebooting...";
-            sendResponse(doc, true, true);
-        }
-        else
-        {
-            doc["status"] = "error";
-            doc["error"] = GSM_OTA::resultToString(result);
-            doc["msg"] = "rebooting...";
-            sendResponse(doc, true, true);
-            Serial.printf("[OTA] FAILED: %s (code %d)\n", GSM_OTA::resultToString(result), (int)result);
-        }
-        
-        esp_restart();
-        vTaskResume(gsmHandle);
-        vTaskResume(apiHandle);
+        handleOtaUpdate(doc, pkt.formBle, pkt.formMqtt);
     }
     else if(strcmp(cmdStr, "reboot") == 0)
     {
@@ -469,4 +426,49 @@ time_t CommandHandler::getTime(String &formatted)
 
     formatted = buf;
     return ist;
+}
+
+void CommandHandler::handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    // modem.mqttDisconnect();
+    vTaskSuspend(apiHandle);
+    // vTaskSuspend(gsmHandle);
+    
+    while (modem.getHttpInAction())
+    {
+        Serial.println("[OTA] HTTP in action...");
+        vTaskDelay(pdMS_TO_TICKS(2000));
+    }
+
+    modem.pauseTasks();
+
+    gsmOta.setAPN(APN);
+    gsmOta.setChunkSize(1024); // optional – 1024 is default
+    gsmOta.setDebugEnabled(true);
+
+    String url = doc["url"] | OTA_URL;
+    OTAResult result = gsmOta.performOTA(url.c_str());
+
+    // setupMqtt();
+    modem.resumeTasks();
+
+    if (result == OTA_SUCCESS)
+    {
+        Serial.println("[OTA] done! Rebooting in 3 s");
+        delay(3000);
+        doc["status"] = "ok";
+        doc["msg"] = "OTA successful, rebooting...";
+        sendResponse(doc, true, true);
+    }
+    else
+    {
+        doc["status"] = "error";
+        doc["error"] = GSM_OTA::resultToString(result);
+        doc["msg"] = "rebooting...";
+        sendResponse(doc, true, true);
+        Serial.printf("[OTA] FAILED: %s (code %d)\n", GSM_OTA::resultToString(result), (int)result);
+    }
+
+    esp_restart();
+    // vTaskResume(gsmHandle);
 }

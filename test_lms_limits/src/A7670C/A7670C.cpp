@@ -1010,6 +1010,22 @@ bool A7670C::getSignalStrength(int &rssi)
     return rssi != 99;
 }
 
+void A7670C::pauseTasks()
+{
+    if (_rxTaskHandle)
+    {
+        vTaskSuspend(_rxTaskHandle);
+    }
+}
+
+void A7670C::resumeTasks()
+{
+    if (_rxTaskHandle)
+    {
+        vTaskResume(_rxTaskHandle);
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Callback setters
 // ─────────────────────────────────────────────────────────────────

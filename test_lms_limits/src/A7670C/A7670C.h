@@ -104,7 +104,6 @@ public:
         return _mqttConnected;
     }
 
-    bool moduleInfo();
     bool getSignalStrength(int &rssi);
 
     bool setTime(String &formatted);
@@ -116,9 +115,10 @@ public:
     void onCallEvent(LineCallback cb);
     void onBootEvent(LineCallback cb);
     void onNetworkEvent(LineCallback cb);
+    void pauseTasks();
+    void resumeTasks();
 
-private:
-
+private: 
     int _pwrPin;
     bool _isPoweredOn;
 
