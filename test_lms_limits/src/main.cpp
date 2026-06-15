@@ -57,6 +57,8 @@ void setup()
     cmdHandler.begin();
 
     gsmOta.onProgress(onProgress);
+    sensorManager.readAllSensors();
+    sensorManager.printLastReadings();
 
     // setupLoRa();
     // sendLoraAlaram_old();
@@ -66,5 +68,20 @@ void setup()
 void loop()
 {
     // sendLoraAlaram_old();
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    // if (digitalRead(MPU_INTERRUPT_PIN))
+    // {
+        sensorManager.readAllSensors();
+        sensorManager.printLastReadings();
+    // }
+    // Serial.println(digitalRead(MPU_INTERRUPT_PIN));
+    vTaskDelay(pdMS_TO_TICKS(10000));
+
+
+    // Serial.printf("Pin 33: %d\n", digitalRead(33));
+    // if(digitalRead(33) == LOW) {
+        // Serial.println("Pin 33 is LOW - Triggering sensor read");
+        // sensorManager.readAllSensors();
+        // sensorManager.printLastReadings();
+    // }
+// vTaskDelay(pdMS_TO_TICKS(100)); // fast print
 }

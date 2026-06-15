@@ -30,8 +30,8 @@ SensorManager::SensorManager()
     calibration.mpu6050TempOffset = 0.0;
     calibration.dht22TempOffset = 0.0;
     calibration.dht22HumidityOffset = 0.0;
-    calibration.soilMoistureOffsetMin = 0.0;
-    calibration.soilMoistureOffsetMax = 4095.0;
+    calibration.soilMoistureOffsetMin = 1050.0;
+    calibration.soilMoistureOffsetMax = 2480.0;
     calibration.rainGaugeTipVolume = 0.2794;
 }
 
@@ -55,9 +55,9 @@ bool SensorManager::initialize() {
     delay(100);
     
     // Initialize all sensors
+    bool mpu6050Init = mpu6050->initialize();
     bool bmp180Init = bmp180->initialize();
     bool bh1750Init = bh1750->initialize();
-    bool mpu6050Init = mpu6050->initialize();
     bool dht22Init = dht22->initialize();
     bool soilMoistureInit = soilMoisture->initialize();
     bool rainGaugeInit = rainGauge->initialize();
@@ -466,6 +466,7 @@ void SensorManager::printLastReadings() {
         Serial.printf("         - Gyro: X:%.2f, Y:%.2f, Z:%.2f °/s\n",
                       readings.mpu6050.gyroX, readings.mpu6050.gyroY, readings.mpu6050.gyroZ);
         Serial.printf("         - Temp: %.2f°C\n", readings.mpu6050.temperature);
+        Serial.printf("         - Movement Count: %lu\n", readings.mpu6050.movementCount);  
     }
     
     if (readings.dht22.isValid) {

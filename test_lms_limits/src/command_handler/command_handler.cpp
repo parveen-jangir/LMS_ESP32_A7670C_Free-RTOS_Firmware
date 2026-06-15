@@ -134,15 +134,15 @@ void CommandHandler::begin()
     buildDeviceMac();
     buildTopic();
 
-    if (!modem.begin())
-    {
-        Serial.println("[GSM] Failed initialization");
-    }
-    else
-    {
-        Serial.println("[GSM] Modem initialized");
-        setupMqtt();
-    }
+    // if (!modem.begin())
+    // {
+    //     Serial.println("[GSM] Failed initialization");
+    // }
+    // else
+    // {
+    //     Serial.println("[GSM] Modem initialized");
+    //     setupMqtt();
+    // }
 
     if (sensorMgr.initialize())
     {
@@ -407,6 +407,7 @@ void CommandHandler::sendResponse(JsonDocument &response, bool toBle, bool toMqt
 
 void CommandHandler::configSensors()
 {
+    // Need to load form NVS 
     // Default calibration setup
     Serial.println("[SENS] CONFIGURING SENSORS...");
 
@@ -427,7 +428,7 @@ void CommandHandler::configSensors()
     sensorMgr.setDHT22CalibrationOffset(0.0, 0.0);
 
     // Soil Moisture calibration (0=dry, 4095=wet)
-    sensorMgr.setSoilMoistureCalibrationOffset(0, 4095);
+    sensorMgr.setSoilMoistureCalibrationOffset(1050.0, 2500.0);
 
     // Rain Gauge calibration (0.2794 mm per tip)
     sensorMgr.setRainGaugeTipVolume(0.2794);

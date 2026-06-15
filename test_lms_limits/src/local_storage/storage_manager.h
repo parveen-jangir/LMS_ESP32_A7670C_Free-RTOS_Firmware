@@ -34,3 +34,10 @@ private:
 };
 
 #endif
+
+/*
+*To add
+1. Calibration offset of MPU's Acc and Gyro
+2. Status of calibration
+3. Calibaration of Soil Max and Min
+*/ 
