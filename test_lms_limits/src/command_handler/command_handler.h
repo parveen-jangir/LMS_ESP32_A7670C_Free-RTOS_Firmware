@@ -101,6 +101,8 @@ private:
     void handleSaveTid(JsonDocument &doc, bool fromBle, bool fromMqtt);
     void handleResetGsm(JsonDocument &doc, bool fromBle, bool fromMqtt);
     void handleLogData(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleMpuReset(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleRainReset(JsonDocument &doc, bool fromBle, bool fromMqtt);
 
     static CommandHandler *_instance;
 

@@ -125,7 +125,8 @@ void CommandHandler::buildDeviceMac()
 
 void CommandHandler::buildTopic()
 {
-    _topic = String("lms/devices/") + _deviceMac + "/configuration/send";
+    // _topic = String("lms/devices/") + _deviceMac + "/configuration/send";
+    _topic = String("lms/devices/") + tid + "/configuration/send";
 
     Serial.println("[MQTT] Subscribed Topic: " + _topic);
 }
@@ -359,6 +360,25 @@ void CommandHandler::dispatch(const commandFormat &pkt)
     {
         handleLogData(doc, pkt.formBle, pkt.formMqtt);
     }
+    else if(strcmp(cmdStr, "mpu_reset") == 0)
+    {
+        handleMpuReset(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if(strcmp(cmdStr, "rain_reset") == 0)
+    {
+        handleRainReset(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if(strcmp(cmdStr, "hit_api") == 0)
+    {
+        String apiUrl = sensorMgr.generateApiUrl(tid);
+        Serial.println("[API] URL: " + apiUrl);
+
+        modem.hitHttpGetRequest(apiUrl);
+        
+        doc["status"] = "ok";
+        doc["msg"] = "Packet sent to API";
+        sendResponse(doc, pkt.formBle, pkt.formMqtt);
+    }
     else if (strcmp(cmdStr, "log_info") == 0)
     {
         Serial.println("  --- Log Info ---");
@@ -416,7 +436,8 @@ void CommandHandler::dispatch(const commandFormat &pkt)
 
 void CommandHandler::sendResponse(JsonDocument &response, bool toBle, bool toMqtt)
 {
-    String topic = String("lms/devices/") + _deviceMac + "/configuration/callback";
+    // String topic = String("lms/devices/") + _deviceMac + "/configuration/callback";
+    String topic = String("lms/devices/") + tid + "/configuration/callback";
     String payload;
     serializeJson(response, payload);
     
@@ -689,3 +710,20 @@ void CommandHandler::handleLogData(JsonDocument &doc, bool fromBle, bool fromMqt
         sendResponse(doc, fromBle, fromMqtt);
 }
 
+void CommandHandler::handleMpuReset(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    sensorMgr.resetMotionCount();
+
+    doc["status"] = "ok";
+    doc["msg"] = "MPU motion count reset done";
+    sendResponse(doc, fromBle, fromMqtt);
+}
+
+void CommandHandler::handleRainReset(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    sensorMgr.resetRainCount();
+
+    doc["status"] = "ok";
+    doc["msg"] = "Rain count reset done";
+    sendResponse(doc, fromBle, fromMqtt);
+}

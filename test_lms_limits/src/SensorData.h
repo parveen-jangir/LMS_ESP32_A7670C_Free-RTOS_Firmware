@@ -30,6 +30,7 @@ struct MPU6050Data {
     bool isValid;
     uint8_t errorCount;
     uint8_t movementCount;
+    float roll, pitch, yaw;        // Orientation angles in degrees
 };
 
 struct DHT22Data {

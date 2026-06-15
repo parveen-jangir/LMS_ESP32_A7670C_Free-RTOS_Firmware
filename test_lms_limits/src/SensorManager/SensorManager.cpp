@@ -232,6 +232,11 @@ bool SensorManager::getAllReadingsJson(JsonDocument &doc)
     gyro["y"] = readings.mpu6050.gyroY;
     gyro["z"] = readings.mpu6050.gyroZ;
 
+    JsonObject orientation = mpu["orientation"].to<JsonObject>();
+    orientation["roll"]  = readings.mpu6050.roll;
+    orientation["pitch"] = readings.mpu6050.pitch;
+    orientation["yaw"]   = readings.mpu6050.yaw;
+
     mpu["temperature"] = readings.mpu6050.temperature;
     mpu["valid"]       = readings.mpu6050.isValid;
     mpu["timestamp"]   = readings.mpu6050.timestamp;
@@ -465,6 +470,8 @@ void SensorManager::printLastReadings() {
                       readings.mpu6050.accelX, readings.mpu6050.accelY, readings.mpu6050.accelZ);
         Serial.printf("         - Gyro: X:%.2f, Y:%.2f, Z:%.2f °/s\n",
                       readings.mpu6050.gyroX, readings.mpu6050.gyroY, readings.mpu6050.gyroZ);
+        Serial.printf("         - Orientation: Roll: %.2f°, Pitch: %.2f°, Yaw: %.2f°\n",
+                      readings.mpu6050.roll, readings.mpu6050.pitch, readings.mpu6050.yaw);
         Serial.printf("         - Temp: %.2f°C\n", readings.mpu6050.temperature);
         Serial.printf("         - Movement Count: %lu\n", readings.mpu6050.movementCount);  
     }
@@ -527,10 +534,10 @@ String SensorManager::generateApiUrl(const String &tripletId)
            String(r.mpu6050.gyroX, 2) + "," +
            String(r.mpu6050.gyroY, 2) + "," +
            String(r.mpu6050.gyroZ, 2) + "," +
-           String(roll, 2) + "," +
-           String(pitch, 2) + "," +
-           String(yaw, 2) + "," +
-           String(motionCount) + ",0,0";
+           String(r.mpu6050.roll, 2) + "," +
+           String(r.mpu6050.pitch, 2) + "," +
+           String(r.mpu6050.yaw, 2) + "," +
+           String(r.mpu6050.movementCount) + ",0,0";
 
     // soil temperature
     url += "&" + tripletId + "s6=" +
@@ -587,4 +594,20 @@ void SensorManager::confSensorWithDefaults()
     }
 
     printSensorStatus();
+}
+
+void SensorManager::resetMotionCount()
+{
+    if (mpu6050) {
+        mpu6050->resetMotionCount();
+    }
+    Serial.println("[MPU6050] MOTION COUNT RESET DONE");
+}
+
+void SensorManager::resetRainCount()
+{
+    if (rainGauge) {
+        rainGauge->resetTipCount();
+    }
+    Serial.println("[RainGauge] RAIN COUNT RESET DONE");
 }

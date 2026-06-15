@@ -498,7 +498,10 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
       <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="ws_send({type:'system_info'})">Refresh</button>
     </div>
     <div class="cbody">
-      <table class="itbl">
+      < class="itbl">
+        <tr><td>Device Name</td><td id="sys-name">—</td></tr>
+        <tr><td>Firmware Version</td><td id="sys-fw">—</td></tr>
+        <tr><td>Time</td><td id="sys-time">—</td></tr>
         <tr><td>Terminal ID (TID)</td><td id="sys-tid">—</td></tr>
         <tr><td>MAC Address</td><td id="sys-mac">—</td></tr>
         <tr><td>ESP32 Uptime</td><td id="sys-up">—</td></tr>

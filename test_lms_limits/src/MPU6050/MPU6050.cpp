@@ -379,6 +379,7 @@ if (digitalRead(interruptPin) == HIGH) {
 
     int16_t accelX_raw, accelY_raw, accelZ_raw;
     int16_t gyroX_raw, gyroY_raw, gyroZ_raw;
+    float roll, pitch, yaw;
 
     uint8_t buffer[14];
     if (!readRegisters(0x3B, buffer, 14))
@@ -410,6 +411,18 @@ if (digitalRead(interruptPin) == HIGH) {
     lastReading.movementCount = getMotionCount();
     lastReading.isValid = true;
     lastReading.errorCount = 0;
+
+    lastReading.roll =
+        atan2(lastReading.accelY, lastReading.accelZ) *
+        180.0f / PI;
+
+    lastReading.pitch =
+        atan2(-lastReading.accelX,
+              sqrt(lastReading.accelY * lastReading.accelY +
+                   lastReading.accelZ * lastReading.accelZ)) *
+        180.0f / PI;
+
+    lastReading.yaw = 0.0f; // Placeholder, replace with actual yaw calculation if needed
 
     return true;
 }

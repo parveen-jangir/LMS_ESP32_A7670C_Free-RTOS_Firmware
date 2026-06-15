@@ -90,6 +90,8 @@ public:
     void printSensorStatus();
     void printLastReadings();
     void confSensorWithDefaults();
+    void resetMotionCount();
+    void resetRainCount();
 };
 
 #endif // SENSOR_MANAGER_H

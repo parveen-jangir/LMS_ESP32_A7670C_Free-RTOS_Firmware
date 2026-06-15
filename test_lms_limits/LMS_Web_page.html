@@ -1,1062 +1,2101 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>LMS Field Setup</title>
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-:root {
-  --bg:      #0d0f0e;
-  --surface: #141716;
-  --sf2:     #1c1f1d;
-  --border:  #2a2e2c;
-  --accent:  #00e5a0;
-  --accent2: #00b07c;
-  --warn:    #ffb800;
-  --danger:  #ff4d4d;
-  --info:    #6ab4ff;
-  --text:    #d4dbd8;
-  --dim:     #7a8884;
-  --muted:   #3d4340;
-  --r:       6px;
-  --font:    -apple-system,'Segoe UI',sans-serif;
-  --mono:    'Courier New',monospace;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{font-size:15px}
-body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;}
-
-/* topbar */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
-.brand{font-weight:700;font-size:14px;letter-spacing:.04em;color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; transition: opacity 0.2s;}
-.brand:hover{opacity: 0.8;}
-.brand span{color:var(--dim);font-weight:400}
-.pill{display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--sf2);font-size:11px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:all .3s}
-.pill.connected{border-color:var(--accent2);background:rgba(0,229,160,.06);color:var(--accent)}
-.pill.connecting{border-color:var(--warn);background:rgba(255,184,0,.06);color:var(--warn)}
-.pill.disconnected{border-color:var(--danger);background:rgba(255,77,77,.06);color:var(--danger)}
-.dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
-.pill.connected .dot{animation:pulse 2s ease-in-out infinite}
-.pill.connecting .dot{animation:blink .7s step-end infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-@keyframes blink{50%{opacity:0}}
-
-/* welcome modal */
-.modal-overlay {position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(13,15,14,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px);}
-.modal-content {background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:90%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,0.5);}
-.modal-content h2 {font-size:16px;margin-bottom:16px;color:var(--accent);text-align:center;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;}
-.sys-list {display:flex;flex-direction:column;gap:8px;}
-.sys-list button {justify-content:flex-start;padding:12px 16px;font-size:14px;border:1px solid var(--border);background:var(--sf2);color:var(--text);border-radius:var(--r);cursor:pointer;transition:all .2s;text-align:left;font-weight:600;}
-.sys-list button:hover {border-color:var(--accent2);color:var(--accent);}
-.sys-list span {float:right;color:var(--dim);font-family:var(--mono);font-size:12px;font-weight:400;}
-
-/* reconnect bar */
-.rbar{display:none;align-items:center;justify-content:center;gap:8px;padding:8px;background:rgba(255,184,0,.08);border-bottom:1px solid rgba(255,184,0,.2);font-size:12px;color:var(--warn)}
-.rbar.show{display:flex}
-
-/* floating pop-up toast */
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(0);background:var(--sf2);border:1px solid var(--accent2);color:var(--accent);font-family:var(--mono);font-size:12px;font-weight:600;padding:10px 20px;border-radius:20px;z-index:999;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .25s}
-.toast.show{opacity:1}
-
-/* tabs */
-.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
-.tab{flex:1;min-width:72px;padding:12px 6px;font-size:12px;font-weight:600;text-align:center;letter-spacing:.04em;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:color .2s,border-color .2s;user-select:none}
-.tab.active{color:var(--accent);border-color:var(--accent)}
-
-/* pages */
-.page{display:none;padding:14px;max-width:720px;margin:0 auto;width:100%}
-.page.active{display:block}
-
-/* section header */
-.shdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;margin-top:2px}
-.stitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)}
-
-/* card */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px;overflow:hidden}
-.chard{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border)}
-.ctitle{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px}
-.cbody{padding:14px}
-
-/* badges */
-.badge{font-size:10px;font-weight:700;font-family:var(--mono);padding:2px 7px;border-radius:4px;letter-spacing:.06em;text-transform:uppercase}
-.b-ok{background:rgba(0,229,160,.12);color:var(--accent);border:1px solid rgba(0,229,160,.3)}
-.b-err{background:rgba(255,77,77,.12);color:var(--danger);border:1px solid rgba(255,77,77,.3)}
-.b-off{background:rgba(122,136,132,.1);color:var(--dim);border:1px solid var(--border)}
-.b-wait{background:rgba(255,184,0,.1);color:var(--warn);border:1px solid rgba(255,184,0,.3)}
-
-/* toggle */
-.tgl{position:relative;width:42px;height:24px;cursor:pointer;flex-shrink:0}
-.tgl input{display:none}
-.tgl-track{display:block;width:100%;height:100%;border-radius:12px;background:var(--muted);transition:background .2s}
-.tgl input:checked~.tgl-track{background:var(--accent2)}
-.tgl-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--text);transition:transform .2s}
-.tgl input:checked~.tgl-thumb{transform:translateX(18px)}
-
-/* readings grid */
-.rg{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:10px}
-.rd{background:var(--sf2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;transition:all 0.2s ease;}
-.rd-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:4px}
-.rd-val{font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1.2}
-.unit{font-size:12px;color:var(--dim);font-weight:400;margin-left:2px}
-
-/* Danger Tile State (0V) */
-.rd.danger { border-color: rgba(255,77,77,.4); background: rgba(255,77,77,.08); }
-.rd.danger .rd-val { color: var(--danger); }
-.rd.danger .rd-label { color: var(--danger); opacity: 0.8; }
-
-/* movement count tile */
-.rd-move{background:var(--sf2);border:1px solid rgba(106,180,255,.3);border-radius:4px;padding:10px 12px;grid-column:span 2}
-.rd-move .rd-val{color:var(--info);font-size:26px}
-
-/* chart container styling */
-.chart-container {width:100%; height:180px; margin-top:16px; position:relative;}
-
-/* buttons */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:var(--r);border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
-.btn:active{transform:translateY(1px)}
-.btn-p{background:var(--accent);color:#050f0a}
-.btn-p:hover{background:#1afcb5;box-shadow:0 0 16px rgba(0,229,160,.3)}
-.btn-s{background:var(--sf2);color:var(--text);border:1px solid var(--border)}
-.btn-s:hover{border-color:var(--accent2);color:var(--accent)}
-.btn-d{background:rgba(255,77,77,.12);color:var(--danger);border:1px solid rgba(255,77,77,.3)}
-.btn-d:hover{background:rgba(255,77,77,.22)}
-.btn-w{background:rgba(255,184,0,.12);color:var(--warn);border:1px solid rgba(255,184,0,.3)}
-.btn-w:hover{background:rgba(255,184,0,.22)}
-.btn-i{background:rgba(106,180,255,.12);color:var(--info);border:1px solid rgba(106,180,255,.3)}
-.btn-i:hover{background:rgba(106,180,255,.22)}
-.btn-big{padding:18px 24px;font-size:16px;width:100%;border-radius:8px}
-.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
-.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.row:last-child{margin-bottom:0}
-
-/* mpu action row */
-.mpu-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-
-/* power grid */
-.pg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-@media(max-width:400px){.pg{grid-template-columns:1fr}}
-.pr{background:var(--sf2);border:1px solid var(--border);border-radius:4px;padding:12px}
-.pr-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
-.pr-val{font-size:22px;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1.1;margin-top:4px}
-.pu{font-size:12px;color:var(--dim)}
-
-/* battery % bar */
-.bat-bar-wrap{margin-top:10px}
-.bat-bar-bg{height:8px;background:var(--sf2);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
-.bat-bar-fill{height:100%;border-radius:4px;background:var(--accent);transition:width .5s}
-.bat-bar-fill.low{background:var(--danger)}
-.bat-bar-fill.mid{background:var(--warn)}
-
-/* info table */
-.itbl{width:100%;border-collapse:collapse;table-layout:fixed}
-.itbl td{padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;word-wrap:break-word}
-.itbl td:first-child{color:var(--dim);width:38%}
-.itbl td:last-child{font-weight:600;font-family:var(--mono)}
-.itbl tr:last-child td{border-bottom:none}
-
-/* tid input row */
-.tid-row{display:flex;gap:8px;margin-top:10px}
-.tid-in{flex:1;background:var(--sf2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:14px;padding:9px 12px;outline:none;transition:border-color .2s;letter-spacing:.06em}
-.tid-in:focus{border-color:var(--accent2)}
-.tid-in::placeholder{color:var(--muted)}
-
-/* signal bars */
-.sbars{display:inline-flex;gap:2px;align-items:flex-end;margin-left:6px}
-.sbar{width:5px;border-radius:1px;background:var(--muted)}
-.sbar.on{background:var(--accent)}
-
-/* terminal */
-.term{background:#080a09;border:1px solid var(--border);border-radius:var(--r);font-family:var(--mono);font-size:12px;height:180px;overflow-y:auto;padding:10px 12px;margin-bottom:8px;line-height:1.6}
-.term::-webkit-scrollbar{width:4px}
-.term::-webkit-scrollbar-thumb{background:var(--muted);border-radius:2px}
-.t-tx{color:var(--info)}
-.t-rx{color:var(--accent)}
-.t-sy{color:var(--dim)}
-.t-er{color:var(--danger)}
-.at-row{display:flex;gap:8px}
-.at-in{flex:1;background:var(--sf2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:13px;padding:9px 12px;outline:none;transition:border-color .2s}
-.at-in:focus{border-color:var(--accent2)}
-.at-in::placeholder{color:var(--muted)}
-.qbtn{padding:5px 9px;font-size:11px}
-
-/* result box */
-.result{margin-top:12px;padding:12px 14px;border-radius:var(--r);font-family:var(--mono);font-size:12px;border:1px solid var(--border);background:var(--sf2);min-height:44px;color:var(--dim);line-height:1.5}
-.result.ok{border-color:rgba(0,229,160,.3);color:var(--accent);background:rgba(0,229,160,.05)}
-.result.fail{border-color:rgba(255,77,77,.3);color:var(--danger);background:rgba(255,77,77,.05)}
-
-/* calibrate result box */
-.cal-result{margin-top:10px;padding:10px 14px;border-radius:var(--r);font-family:var(--mono);font-size:12px;border:1px solid var(--border);background:var(--sf2);color:var(--dim);line-height:1.5;min-height:38px}
-.cal-result.ok{border-color:rgba(106,180,255,.3);color:var(--info);background:rgba(106,180,255,.05)}
-.cal-result.fail{border-color:rgba(255,77,77,.3);color:var(--danger);background:rgba(255,77,77,.05)}
-
-/* select */
-.sel{background:var(--sf2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font);font-size:13px;padding:9px 12px;outline:none;width:100%;margin-bottom:8px}
-.sel:focus{border-color:var(--accent2)}
-
-/* divider */
-hr{border:none;border-top:1px solid var(--border);margin:14px 0}
-</style>
-</head>
-<body>
-
-<div id="welcome-modal" class="modal-overlay">
-  <div class="modal-content">
-    <h2>Select Target System</h2>
-    <div class="sys-list">
-      <button onclick="selectSystem('Kotropi', 't108')">Kotropi <span>t108</span></button>
-      <button onclick="selectSystem('Parashar', 't107')">Parashar <span>t107</span></button>
-      <button onclick="selectSystem('Gora Fam 1', 't68')">Gora Fam 1 <span>t68</span></button>
-      <button onclick="selectSystem('Gora Fam 2', 't41')">Gora Fam 2 <span>t41</span></button>
-      <button onclick="selectSystem('Gora Fam 3', 't40')">Gora Fam 3 <span>t40</span></button>
-    </div>
-    <hr>
-    <div>
-      <div style="font-size:11px; font-weight:700; color:var(--dim); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px;">Custom System</div>
-      <input type="text" id="customName" placeholder="System Name (e.g. Test Site)" class="tid-in" style="width:100%; margin-bottom:8px; font-family:var(--font); font-size:13px;">
-      <input type="text" id="customTid" placeholder="TID (e.g. t99)" class="tid-in" style="width:100%; margin-bottom:12px;">
-      <button class="btn btn-p" style="width:100%" onclick="selectCustom()">Connect to Custom</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<div class="topbar">
-  <div class="brand" id="main-brand" onclick="document.getElementById('welcome-modal').style.display = 'flex'" title="Select Target System">
-    Land Slide Monitoring System <span id="brand-site"></span>
-  </div>
-  <div class="pill disconnected" id="pill">
-    <span class="dot"></span><span id="pillTxt">DISCONNECTED</span>
-  </div>
-</div>
-
-<div class="rbar" id="rbar">Reconnecting in <b id="rsec">5</b>s…</div>
-
-<div class="tabs">
-  <div class="tab active" onclick="tab(0)">SENSORS</div>
-  <div class="tab" onclick="tab(1)">POWER</div>
-  <div class="tab" onclick="tab(2)">GSM</div>
-  <div class="tab" onclick="tab(3)">LORA</div>
-  <div class="tab" onclick="tab(4)">SYSTEM</div>
-</div>
-
-<div class="page active" id="p0">
-  <div class="shdr">
-    <span class="stitle">Sensor Test</span>
-    <div style="display:flex;gap:6px">
-      <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readSensors()">Read All</button>
-      <button class="btn btn-s" style="padding:6px 11px;font-size:12px" id="autoBtn" onclick="toggleAuto()">Auto: OFF</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard">
-      <div class="ctitle">DHT22 <span class="badge b-wait" id="bd-dht">WAIT</span></div>
-      <label class="tgl"><input type="checkbox" id="tgl-dht" checked onchange="toggleSensor('DHT22',this.checked)"><span class="tgl-track"></span><span class="tgl-thumb"></span></label>
-    </div>
-    <div class="cbody">
-      <div class="rg">
-        <div class="rd"><div class="rd-label">Temperature</div><div class="rd-val" id="v-dht-t">—<span class="unit">°C</span></div></div>
-        <div class="rd"><div class="rd-label">Humidity</div><div class="rd-val" id="v-dht-h">—<span class="unit">%</span></div></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard">
-      <div class="ctitle">BH1750 <span class="badge b-wait" id="bd-bh">WAIT</span></div>
-      <label class="tgl"><input type="checkbox" id="tgl-bh" checked onchange="toggleSensor('BH1750',this.checked)"><span class="tgl-track"></span><span class="tgl-thumb"></span></label>
-    </div>
-    <div class="cbody">
-      <div class="rg">
-        <div class="rd"><div class="rd-label">Illuminance</div><div class="rd-val" id="v-bh-l">—<span class="unit">lux</span></div></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard">
-      <div class="ctitle">BMP180 <span class="badge b-wait" id="bd-bmp">WAIT</span></div>
-      <label class="tgl"><input type="checkbox" id="tgl-bmp" checked onchange="toggleSensor('BMP180',this.checked)"><span class="tgl-track"></span><span class="tgl-thumb"></span></label>
-    </div>
-    <div class="cbody">
-      <div class="rg">
-        <div class="rd"><div class="rd-label">Temperature</div><div class="rd-val" id="v-bmp-t">—<span class="unit">°C</span></div></div>
-        <div class="rd"><div class="rd-label">Pressure</div><div class="rd-val" id="v-bmp-p">—<span class="unit">hPa</span></div></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard">
-      <div class="ctitle">Soil Moisture <span class="badge b-wait" id="bd-soil">WAIT</span></div>
-      <label class="tgl"><input type="checkbox" id="tgl-soil" checked onchange="toggleSensor('SoilMoisture',this.checked)"><span class="tgl-track"></span><span class="tgl-thumb"></span></label>
-    </div>
-    <div class="cbody">
-      <div class="rg">
-        <div class="rd"><div class="rd-label">Moisture</div><div class="rd-val" id="v-soil-p">—<span class="unit">%</span></div></div>
-        <div class="rd"><div class="rd-label">Raw ADC</div><div class="rd-val" id="v-soil-r">—</div></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard">
-      <div class="ctitle">MPU6050 <span class="badge b-wait" id="bd-mpu">WAIT</span></div>
-      <label class="tgl"><input type="checkbox" id="tgl-mpu" checked onchange="toggleSensor('MPU6050',this.checked)"><span class="tgl-track"></span><span class="tgl-thumb"></span></label>
-    </div>
-    <div class="cbody">
-      <div class="rg">
-        <div class="rd"><div class="rd-label">Accel X</div><div class="rd-val" id="v-ax">—<span class="unit">m/s²</span></div></div>
-        <div class="rd"><div class="rd-label">Accel Y</div><div class="rd-val" id="v-ay">—<span class="unit">m/s²</span></div></div>
-        <div class="rd"><div class="rd-label">Accel Z</div><div class="rd-val" id="v-az">—<span class="unit">m/s²</span></div></div>
-        <div class="rd"><div class="rd-label">Gyro X</div><div class="rd-val" id="v-gx">—<span class="unit">°/s</span></div></div>
-        <div class="rd"><div class="rd-label">Gyro Y</div><div class="rd-val" id="v-gy">—<span class="unit">°/s</span></div></div>
-        <div class="rd"><div class="rd-label">Gyro Z</div><div class="rd-val" id="v-gz">—<span class="unit">°/s</span></div></div>
-        <div class="rd rd-move">
-          <div class="rd-label">Movement Count</div>
-          <div class="rd-val" id="v-mpu-mc">—</div>
-        </div>
-      </div>
-      <div class="mpu-actions">
-        <button class="btn btn-w" style="padding:7px 13px;font-size:12px" onclick="resetMovement()">Reset Movement Count</button>
-        <button class="btn btn-i" style="padding:7px 13px;font-size:12px" onclick="calibrateMPU()">Calibrate</button>
-      </div>
-      <div class="cal-result" id="mpu-cal-result">Press Calibrate to zero the MPU offsets. Keep the device level and still.</div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard">
-      <div class="ctitle">Rain Gauge <span class="badge b-wait" id="bd-rain">WAIT</span></div>
-      <label class="tgl"><input type="checkbox" id="tgl-rain" checked onchange="toggleSensor('RainGauge',this.checked)"><span class="tgl-track"></span><span class="tgl-thumb"></span></label>
-    </div>
-    <div class="cbody">
-      <div class="rg">
-        <div class="rd"><div class="rd-label">Tips</div><div class="rd-val" id="v-rain-t">—</div></div>
-        <div class="rd"><div class="rd-label">Rainfall</div><div class="rd-val" id="v-rain-m">—<span class="unit">mm</span></div></div>
-      </div>
-      <div style="margin-top:10px">
-        <button class="btn btn-w" style="padding:7px 13px;font-size:12px" onclick="resetRain()">Reset Counter</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard"><div class="ctitle">Sensor Health</div></div>
-    <div class="cbody">
-      <div class="rg">
-        <div class="rd" id="tile-sh-soil"><div class="rd-label">Soil Node</div><div class="rd-val" id="v-sh-soil">—<span class="unit">V</span></div></div>
-        <div class="rd" id="tile-sh-weather"><div class="rd-label">Weather Node</div><div class="rd-val" id="v-sh-weather">—<span class="unit">V</span></div></div>
-        <div class="rd" id="tile-sh-mpu"><div class="rd-label">MPU Node</div><div class="rd-val" id="v-sh-mpu">—<span class="unit">V</span></div></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="page" id="p1">
-  <div class="shdr">
-    <span class="stitle">Power Monitor</span>
-    <div style="display:flex;gap:6px">
-      <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readBattery()">Battery</button>
-      <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readSolar()">Solar</button>
-      <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readSystemPower()">System</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard"><div class="ctitle">Solar Panel</div></div>
-    <div class="cbody">
-      <div class="pg">
-        <div class="pr"><div class="pr-label">Voltage</div><div class="pr-val" id="sv">—<span class="pu"> V</span></div></div>
-        <div class="pr"><div class="pr-label">Current</div><div class="pr-val" id="si">—<span class="pu"> A</span></div></div>
-        <div class="pr"><div class="pr-label">Power</div><div class="pr-val" id="sp">—<span class="pu"> mW</span></div></div>
-        <div class="pr"><div class="pr-label">Energy</div><div class="pr-val" id="se">—<span class="pu"> Wh</span></div></div>
-      </div>
-      <div class="chart-container">
-        <canvas id="solarChart"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard"><div class="ctitle">Battery</div></div>
-    <div class="cbody">
-      <div class="pg">
-        <div class="pr"><div class="pr-label">Voltage</div><div class="pr-val" id="bv">—<span class="pu"> V</span></div></div>
-        <div class="pr"><div class="pr-label">Current</div><div class="pr-val" id="bi">—<span class="pu"> A</span></div></div>
-        <div class="pr"><div class="pr-label">Power</div><div class="pr-val" id="bp">—<span class="pu"> mW</span></div></div>
-        <div class="pr"><div class="pr-label">Energy</div><div class="pr-val" id="be">—<span class="pu"> Wh</span></div></div>
-        <div class="pr"><div class="pr-label">Charging</div><div class="pr-val" id="b-chg" style="font-size:16px">—</div></div>
-      </div>
-      <div class="bat-bar-wrap">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-size:11px;color:var(--dim)">Charge Level</span>
-          <span class="badge b-wait" id="bat-pct-badge">—%</span>
-        </div>
-        <div class="bat-bar-bg"><div class="bat-bar-fill" id="bat-bar" style="width:0%"></div></div>
-      </div>
-      <div class="chart-container">
-        <canvas id="batteryChart"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard"><div class="ctitle">System Power</div></div>
-    <div class="cbody">
-      <table class="itbl">
-        <tr><td>Source</td><td id="sys-source">—</td></tr>
-        <tr><td>Voltage</td><td><span id="sys-pwr-v">—</span> V</td></tr>
-        <tr><td>Current</td><td><span id="sys-pwr-i">—</span> A</td></tr>
-        <tr><td>Power</td><td><span id="sys-pwr-p">—</span> mW</td></tr>
-        <tr><td>Energy</td><td><span id="sys-pwr-e">—</span> Wh</td></tr>
-      </table>
-    </div>
-  </div>
-</div>
-
-<div class="page" id="p2">
-  <div class="shdr">
-    <span class="stitle">GSM / SIM A7670C</span>
-    <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="refreshGSM()">Refresh</button>
-  </div>
-
-  <div class="card">
-    <div class="chard">
-      <div class="ctitle">Module Info <span class="badge b-wait" id="bd-gsm">WAIT</span></div>
-      <button class="btn btn-d" style="padding:6px 11px;font-size:12px" onclick="resetGSM()">Reset</button>
-    </div>
-    <div class="cbody">
-      <table class="itbl">
-        <tr><td>SIM Status</td><td id="gsm-sim">—</td></tr>
-        <tr>
-          <td>Signal (RSSI)</td>
-          <td>
-            <span id="gsm-rssi">—</span>
-            <span class="sbars">
-              <div class="sbar" style="height:6px"  id="sb1"></div>
-              <div class="sbar" style="height:10px" id="sb2"></div>
-              <div class="sbar" style="height:14px" id="sb3"></div>
-              <div class="sbar" style="height:18px" id="sb4"></div>
-              <div class="sbar" style="height:22px" id="sb5"></div>
-            </span>
-          </td>
-        </tr>
-        <tr><td>Operator</td><td id="gsm-op">—</td></tr>
-        <tr><td>SIM Number</td><td id="gsm-num">—</td></tr>
-        <tr><td>IP Address</td><td id="gsm-ip" style="font-size:12px">—</td></tr>
-        <tr><td>GSM Voltage</td><td><span id="gsm-v">—</span> V</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard"><div class="ctitle">SIM Configuration</div></div>
-    <div class="cbody">
-      <div style="margin-bottom:8px;font-size:12px;color:var(--dim)">Select Operator / APN</div>
-      <select class="sel" id="opSelect">
-        <option value="airtelgprs.com">Airtel — airtelgprs.com</option>
-        <option value="internet">Jio — internet</option>
-        <option value="bsnlnet">BSNL — bsnlnet</option>
-        <option value="vi.gprs">Vi — vi.gprs</option>
-      </select>
-      <button class="btn btn-s" style="width:100%;margin-bottom:8px" onclick="setAPN()">Apply APN</button>
-      <button class="btn btn-s" style="width:100%" onclick="ws_send({type:'gsm_at',command:'AT+CUSD=1,&quot;*121#&quot;'})">Get SIM Balance</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard"><div class="ctitle">Test</div></div>
-    <div class="cbody">
-      <div class="row">
-        <button class="btn btn-s" onclick="gsmTest('sms')">Test SMS</button>
-        <button class="btn btn-s" onclick="gsmTest('call')">Test Call</button>
-        <button class="btn btn-s" onclick="gsmTest('api')">Test API</button>
-        <button class="btn btn-w" onclick="gsmTest('ota')">OTA Update</button>
-      </div>
-      <div class="result" id="gsm-result">Run a test to see result.</div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="chard"><div class="ctitle">AT Terminal</div></div>
-    <div class="cbody">
-      <div class="term" id="term"><div class="t-sy">AT terminal ready.</div></div>
-      <div class="at-row" style="margin-bottom:8px">
-        <input class="at-in" id="atIn" type="text" placeholder="AT+CSQ" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')sendAT()">
-        <button class="btn btn-p" onclick="sendAT()">Send</button>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-s qbtn" onclick="qat('AT')">AT</button>
-        <button class="btn btn-s qbtn" onclick="qat('AT+CSQ')">Signal</button>
-        <button class="btn btn-s qbtn" onclick="qat('AT+CNUM')">SIM No</button>
-        <button class="btn btn-s qbtn" onclick="qat('AT+COPS?')">Operator</button>
-        <button class="btn btn-s qbtn" onclick="qat('AT+CBC')">Voltage</button>
-        <button class="btn btn-s qbtn" onclick="qat('AT+CREG?')">Reg</button>
-        <button class="btn btn-s qbtn" onclick="qat('AT+CGDCONT?')">APN</button>
-        <button class="btn btn-s qbtn" onclick="qat('AT+CIMI')">IMSI</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="page" id="p3">
-  <div class="shdr" style="margin-top:2px"><span class="stitle">LoRa / Hooter</span></div>
-
-  <div class="card">
-    <div class="chard">
-      <div class="ctitle">LoRa RA-02 · 433 MHz <span class="badge b-wait" id="bd-lora">WAIT</span></div>
-    </div>
-    <div class="cbody">
-      <p style="font-size:13px;color:var(--dim);margin-bottom:16px;line-height:1.5">
-        Sends a trigger packet to the hooter Arduino (LoRa RX). The hooter will sound on receipt.
-      </p>
-      <button class="btn btn-p btn-big" onclick="triggerHooter()">TRIGGER HOOTER</button>
-      <div class="result" id="lora-result">Press the button to send a LoRa trigger.</div>
-    </div>
-  </div>
-</div>
-
-<div class="page" id="p4">
-  <div class="shdr" style="margin-top:2px"><span class="stitle">Device Configuration</span></div>
-  
-  <div class="card">
-    <div class="chard">
-      <div class="ctitle">System Info</div>
-      <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="ws_send({type:'system_info'})">Refresh</button>
-    </div>
-    <div class="cbody">
-      <table class="itbl">
-        <tr><td>Terminal ID (TID)</td><td id="sys-tid">—</td></tr>
-        <tr><td>MAC Address</td><td id="sys-mac">—</td></tr>
-        <tr><td>ESP32 Uptime</td><td id="sys-up">—</td></tr>
-        <tr><td>Free Heap</td><td id="sys-heap">—</td></tr>
-        <tr><td>MQTT Broker</td><td>76.13.243.127:9001</td></tr>
-        <tr><td>Pub Topic</td><td id="sys-pub-topic" style="font-size:11px; color:var(--text);">—</td></tr>
-        <tr><td>Sub Topic</td><td id="sys-sub-topic" style="font-size:11px; color:var(--text);">—</td></tr>
-      </table>
-      <div class="tid-row">
-        <input class="tid-in" id="tidInput" type="text" placeholder="Change TID physically on ESP32" maxlength="20" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')saveTID()">
-        <button class="btn btn-p" style="padding:9px 16px" onclick="saveTID()">Write TID</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-'use strict';
-
-// ── MQTT broker config ────────────────────────────────────────────────────────
-const BROKER    = 'ws://76.13.243.127:9001';
-const MQTT_USER = 'lms_mqtt_broker';
-const MQTT_PASS = 'landslidemonitoringsystem';
-
-// Dynamic topics set via the Welcome Modal
-let PUB_TOPIC = '';
-let SUB_TOPIC = '';
-let CURRENT_TID = '';
-let CURRENT_SYS = '';
-
-let client = null, rTimer = null, rTick = null;
-let autoOn = false, autoTimer = null;
-const AUTO_MS = 5000;
-
-// Chart Tracking Contexts (10-minute trailing data windows)
-let solarHistory = [];
-let batteryHistory = [];
-let solarChart = null;
-let batteryChart = null;
-
-// ── Selection Logic ───────────────────────────────────────────────────────────
-function selectSystem(name, tid) {
-  if (client && client.connected && SUB_TOPIC) {
-    client.unsubscribe(SUB_TOPIC);
-  }
-
-  CURRENT_SYS = name;
-  CURRENT_TID = tid;
-  PUB_TOPIC = `lms/devices/${tid}/configuration/send`;
-  SUB_TOPIC = `lms/devices/${tid}/configuration/callback`;
-
-  // UI Updates
-  document.getElementById('welcome-modal').style.display = 'none';
-  document.getElementById('brand-site').innerHTML = `<span style="color:var(--dim); font-weight:normal; margin:0 4px;">|</span> <span style="color:var(--text);">${name}</span> <span style="color:var(--dim); font-weight:normal; font-family:var(--mono);">${tid}</span>`;
-  document.getElementById('sys-pub-topic').textContent = PUB_TOPIC;
-  document.getElementById('sys-sub-topic').textContent = SUB_TOPIC;
-  
-  if (client && client.connected) {
-    client.subscribe(SUB_TOPIC);
-    readSensors();
-    readBattery();
-    readSolar();
-    readSystemPower();
-    refreshGSM();
-    ws_send({ type: 'system_info' });
-  } else {
-    connect();
-  }
-}
-
-function selectCustom() {
-  const name = document.getElementById('customName').value.trim() || 'Custom Site';
-  const tid = document.getElementById('customTid').value.trim();
-  if (!tid) { alert('Please enter a valid TID to connect.'); return; }
-  selectSystem(name, tid);
-}
-
-// ── tabs ──────────────────────────────────────────────────────────────────────
-const tabEls  = document.querySelectorAll('.tab');
-const pageEls = document.querySelectorAll('.page');
-function tab(i) {
-  tabEls.forEach((t,j)  => t.classList.toggle('active', i===j));
-  pageEls.forEach((p,j) => p.classList.toggle('active', i===j));
-}
-
-// ── toast pop-up (2-second floating message) ──────────────────────────────────
-let toastTimer = null;
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
-}
-
-// ── MQTT connection ───────────────────────────────────────────────────────────
-function connect() {
-  if (client && client.connected) return;
-  setConn('connecting');
-  client = mqtt.connect(BROKER, {
-    username:        MQTT_USER,
-    password:        MQTT_PASS,
-    clientId:        'lms_browser_' + Math.random().toString(16).slice(2, 8),
-    reconnectPeriod: 0
-  });
-  client.on('connect', () => {
-    clearReconn();
-    setConn('connected');
-    client.subscribe(SUB_TOPIC);
-    readSensors();
-    readBattery();
-    readSolar();
-    readSystemPower();
-    refreshGSM();
-    ws_send({ type: 'system_info' });
-  });
-  client.on('message', (topic, payload) => {
-    try { handle(JSON.parse(payload.toString())); } catch(e) {}
-  });
-  client.on('close', () => { setConn('disconnected'); schedReconn(); });
-  client.on('error', () => {});
-}
-
-function ws_send(obj) {
-  if (client && client.connected && PUB_TOPIC)
-    client.publish(PUB_TOPIC, JSON.stringify(obj));
-}
-
-// ── reconnect ─────────────────────────────────────────────────────────────────
-function schedReconn() {
-  clearTimeout(rTimer); let s = 5;
-  document.getElementById('rsec').textContent = s;
-  document.getElementById('rbar').classList.add('show');
-  rTick = setInterval(() => { s--; document.getElementById('rsec').textContent = Math.max(0, s); }, 1000);
-  rTimer = setTimeout(() => { clearReconn(); connect(); }, 5000);
-}
-function clearReconn() {
-  clearTimeout(rTimer); clearInterval(rTick);
-  document.getElementById('rbar').classList.remove('show');
-}
-function setConn(s) {
-  document.getElementById('pill').className = 'pill ' + s;
-  document.getElementById('pillTxt').textContent = s.toUpperCase();
-}
-
-// ── message router ────────────────────────────────────────────────────────────
-function handle(d) {
-  if (d.msg) showToast(d.msg);
-
-  switch(d.type) {
-    case 'sensor_broadcast': updSensors(d);     break;
-    case 'sensor_state':     updSensorState(d); break;
-    case 'system_info':      updSys(d);         break;
-    case 'save_tid':         updSaveTid(d);     break;
-    case 'battery_status':   updBattery(d);     break;
-    case 'solar_status':     updSolar(d);       break;
-    case 'system_power':     updSystemPower(d); break;
-    case 'gsm_info':         updGSM(d);         break;
-    case 'gsm_response':     appendAT(d.response); break;
-    case 'gsm_test':         updTest(d);        break;
-    case 'lora_result':      updLora(d);        break;
-  }
-}
-
-// ── helpers ───────────────────────────────────────────────────────────────────
-function bdg(id, valid, state) {
-  const e = document.getElementById(id);
-  if (!state)     { e.className = 'badge b-off'; e.textContent = 'OFF'; }
-  else if (valid) { e.className = 'badge b-ok';  e.textContent = 'OK';  }
-  else            { e.className = 'badge b-err'; e.textContent = 'ERR'; }
-}
-
-function setVal(id, v, digits, unitHtml) {
-  const e = document.getElementById(id); if (!e) return;
-  const u = unitHtml || '';
-  e.innerHTML = (v === null || v === undefined)
-    ? '—' + u
-    : (typeof v === 'number' ? v.toFixed(digits) : v) + u;
-}
-
-function setText(id, v) {
-  const e = document.getElementById(id); if (e) e.textContent = v ?? '—';
-}
-
-function updateHealthTile(tileId, valId, voltage) {
-  const tile = document.getElementById(tileId);
-  if (!tile) return;
-  if (voltage !== undefined && voltage !== null) {
-    setVal(valId, voltage, 2, '<span class="unit">V</span>');
-    tile.classList.toggle('danger', Number(voltage) === 0);
-  }
-}
-
-// Rolling Time Buffer Management Engine (Filters anything older than 10 mins out)
-function updateHistoryArray(arr, v, i) {
-  const now = Date.now();
-  arr.push({ t: now, v: parseFloat(v) || 0, i: parseFloat(i) || 0 });
-  const cutoff = now - (10 * 60 * 1000);
-  while (arr.length > 0 && arr[0].t < cutoff) {
-    arr.shift();
-  }
-}
-
-function renderChartUpdates(chartInstance, historyData) {
-  if (!chartInstance) return;
-  chartInstance.data.labels = historyData.map(pt => {
-    let t = new Date(pt.t);
-    return t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  });
-  chartInstance.data.datasets[0].data = historyData.map(pt => pt.v);
-  chartInstance.data.datasets[1].data = historyData.map(pt => pt.i);
-  chartInstance.update('none'); 
-}
-
-// ── Chart Generator Factory Engine ──────────────────────────────────────────
-function initPowerChartInstance(canvasId, maxVoltScale) {
-  const canvasElement = document.getElementById(canvasId);
-  if (!canvasElement) return null;
-  const context = canvasElement.getContext('2d');
-  
-  return new Chart(context, {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [
-        {
-          label: 'Voltage (V)',
-          data: [],
-          borderColor: '#00e5a0', 
-          backgroundColor: 'transparent',
-          yAxisID: 'yVoltage',
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.15
-        },
-        {
-          label: 'Current (A)',
-          data: [],
-          borderColor: '#ff4d4d', 
-          backgroundColor: 'transparent',
-          yAxisID: 'yCurrent',
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.15
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'top',
-          labels: { color: '#d4dbd8', boxWidth: 12, font: { family: 'sans-serif', size: 10 } }
-        }
-      },
-      scales: {
-        x: {
-          grid: { color: '#2a2e2c' },
-          ticks: { color: '#7a8884', font: { size: 9 }, maxRotation: 0 }
-        },
-        yVoltage: {
-          type: 'linear',
-          position: 'left',
-          min: 0,
-          max: maxVoltScale,
-          grid: { color: '#2a2e2c' },
-          ticks: { color: '#00e5a0', font: { size: 10 } },
-          title: { display: true, text: 'Voltage (V)', color: '#00e5a0', font: { size: 10, weight: 'bold' } }
-        },
-        yCurrent: {
-          type: 'linear',
-          position: 'right',
-          min: -3,
-          max: 3,
-          grid: { drawOnChartArea: false }, 
-          ticks: { color: '#ff4d4d', font: { size: 10 } },
-          title: { display: true, text: 'Current (A)', color: '#ff4d4d', font: { size: 10, weight: 'bold' } }
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>LMS Field Setup</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0d0f0e;
+      --surface: #141716;
+      --sf2: #1c1f1d;
+      --border: #2a2e2c;
+      --accent: #00e5a0;
+      --accent2: #00b07c;
+      --warn: #ffb800;
+      --danger: #ff4d4d;
+      --info: #6ab4ff;
+      --text: #d4dbd8;
+      --dim: #7a8884;
+      --muted: #3d4340;
+      --r: 6px;
+      --font: -apple-system, 'Segoe UI', sans-serif;
+      --mono: 'Courier New', monospace;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    html {
+      font-size: 15px
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* topbar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100
+    }
+
+    .brand {
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: .04em;
+      color: var(--accent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .brand:hover {
+      opacity: 0.8;
+    }
+
+    .brand span {
+      color: var(--dim);
+      font-weight: 400
+    }
+
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--sf2);
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      transition: all .3s
+    }
+
+    .pill.connected {
+      border-color: var(--accent2);
+      background: rgba(0, 229, 160, .06);
+      color: var(--accent)
+    }
+
+    .pill.connecting {
+      border-color: var(--warn);
+      background: rgba(255, 184, 0, .06);
+      color: var(--warn)
+    }
+
+    .pill.disconnected {
+      border-color: var(--danger);
+      background: rgba(255, 77, 77, .06);
+      color: var(--danger)
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0
+    }
+
+    .pill.connected .dot {
+      animation: pulse 2s ease-in-out infinite
+    }
+
+    .pill.connecting .dot {
+      animation: blink .7s step-end infinite
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .5
       }
     }
-  });
-}
 
-// ── sensor_broadcast ──────────────────────────────────────────────────────────
-function updSensors(d) {
-  if (d.dht22) {
-    bdg('bd-dht', d.dht22.valid, d.dht22.state);
-    setVal('v-dht-t', d.dht22.temperature, 1, '<span class="unit">°C</span>');
-    setVal('v-dht-h', d.dht22.humidity,    1, '<span class="unit">%</span>');
-  }
-  if (d.bh1750) {
-    bdg('bd-bh', d.bh1750.valid, d.bh1750.state);
-    setVal('v-bh-l', d.bh1750.illuminance, 2, '<span class="unit">lux</span>');
-  }
-  if (d.bmp180) {
-    bdg('bd-bmp', d.bmp180.valid, d.bmp180.state);
-    setVal('v-bmp-t', d.bmp180.temperature, 1, '<span class="unit">°C</span>');
-    setVal('v-bmp-p', d.bmp180.pressure,    2, '<span class="unit">hPa</span>');
-  }
-  if (d.soil_moisture) {
-    bdg('bd-soil', d.soil_moisture.valid, d.soil_moisture.state);
-    setVal('v-soil-p', d.soil_moisture.percentage, 2, '<span class="unit">%</span>');
-    setText('v-soil-r', d.soil_moisture.raw);
-  }
-  if (d.mpu6050) {
-    bdg('bd-mpu', d.mpu6050.valid, d.mpu6050.state);
-    if (d.mpu6050.acceleration) {
-      setVal('v-ax', d.mpu6050.acceleration.x, 3, '<span class="unit">m/s²</span>');
-      setVal('v-ay', d.mpu6050.acceleration.y, 3, '<span class="unit">m/s²</span>');
-      setVal('v-az', d.mpu6050.acceleration.z, 3, '<span class="unit">m/s²</span>');
+    @keyframes blink {
+      50% {
+        opacity: 0
+      }
     }
-    if (d.mpu6050.gyroscope) {
-      setVal('v-gx', d.mpu6050.gyroscope.x, 3, '<span class="unit">°/s</span>');
-      setVal('v-gy', d.mpu6050.gyroscope.y, 3, '<span class="unit">°/s</span>');
-      setVal('v-gz', d.mpu6050.gyroscope.z, 3, '<span class="unit">°/s</span>');
+
+    /* welcome modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(13, 15, 14, 0.92);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(5px);
     }
-    setText('v-mpu-mc', d.mpu6050.movement_count);
-    if (d.mpu6050.calibrated !== undefined) {
+
+    .modal-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      width: 90%;
+      max-width: 380px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content h2 {
+      font-size: 16px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      text-align: center;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .sys-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sys-list button {
+      justify-content: flex-start;
+      padding: 12px 16px;
+      font-size: 14px;
+      border: 1px solid var(--border);
+      background: var(--sf2);
+      color: var(--text);
+      border-radius: var(--r);
+      cursor: pointer;
+      transition: all .2s;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    .sys-list button:hover {
+      border-color: var(--accent2);
+      color: var(--accent);
+    }
+
+    .sys-list span {
+      float: right;
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    /* reconnect bar */
+    .rbar {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px;
+      background: rgba(255, 184, 0, .08);
+      border-bottom: 1px solid rgba(255, 184, 0, .2);
+      font-size: 12px;
+      color: var(--warn)
+    }
+
+    .rbar.show {
+      display: flex
+    }
+
+    /* floating pop-up toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(0);
+      background: var(--sf2);
+      border: 1px solid var(--accent2);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 20px;
+      z-index: 999;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s
+    }
+
+    .toast.show {
+      opacity: 1
+    }
+
+    /* tabs */
+    .tabs {
+      display: flex;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch
+    }
+
+    .tab {
+      flex: 1;
+      min-width: 72px;
+      padding: 12px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: .04em;
+      color: var(--dim);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: color .2s, border-color .2s;
+      user-select: none
+    }
+
+    .tab.active {
+      color: var(--accent);
+      border-color: var(--accent)
+    }
+
+    /* pages */
+    .page {
+      display: none;
+      padding: 14px;
+      max-width: 720px;
+      margin: 0 auto;
+      width: 100%
+    }
+
+    .page.active {
+      display: block
+    }
+
+    /* section header */
+    .shdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      margin-top: 2px
+    }
+
+    .stitle {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--dim)
+    }
+
+    /* card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      margin-bottom: 12px;
+      overflow: hidden
+    }
+
+    .chard {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .ctitle {
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .cbody {
+      padding: 14px
+    }
+
+    /* badges */
+    .badge {
+      font-size: 10px;
+      font-weight: 700;
+      font-family: var(--mono);
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: .06em;
+      text-transform: uppercase
+    }
+
+    .b-ok {
+      background: rgba(0, 229, 160, .12);
+      color: var(--accent);
+      border: 1px solid rgba(0, 229, 160, .3)
+    }
+
+    .b-err {
+      background: rgba(255, 77, 77, .12);
+      color: var(--danger);
+      border: 1px solid rgba(255, 77, 77, .3)
+    }
+
+    .b-off {
+      background: rgba(122, 136, 132, .1);
+      color: var(--dim);
+      border: 1px solid var(--border)
+    }
+
+    .b-wait {
+      background: rgba(255, 184, 0, .1);
+      color: var(--warn);
+      border: 1px solid rgba(255, 184, 0, .3)
+    }
+
+    /* toggle */
+    .tgl {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      cursor: pointer;
+      flex-shrink: 0
+    }
+
+    .tgl input {
+      display: none
+    }
+
+    .tgl-track {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      background: var(--muted);
+      transition: background .2s
+    }
+
+    .tgl input:checked~.tgl-track {
+      background: var(--accent2)
+    }
+
+    .tgl-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--text);
+      transition: transform .2s
+    }
+
+    .tgl input:checked~.tgl-thumb {
+      transform: translateX(18px)
+    }
+
+    /* readings grid */
+    .rg {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 8px;
+      margin-top: 10px
+    }
+
+    .rd {
+      background: var(--sf2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 12px;
+      transition: all 0.2s ease;
+    }
+
+    .rd-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--dim);
+      margin-bottom: 4px
+    }
+
+    .rd-val {
+      font-size: 20px;
+      font-weight: 700;
+      font-family: var(--mono);
+      color: var(--text);
+      line-height: 1.2
+    }
+
+    .unit {
+      font-size: 12px;
+      color: var(--dim);
+      font-weight: 400;
+      margin-left: 2px
+    }
+
+    /* Danger Tile State (0V) */
+    .rd.danger {
+      border-color: rgba(255, 77, 77, .4);
+      background: rgba(255, 77, 77, .08);
+    }
+
+    .rd.danger .rd-val {
+      color: var(--danger);
+    }
+
+    .rd.danger .rd-label {
+      color: var(--danger);
+      opacity: 0.8;
+    }
+
+    /* movement count tile */
+    .rd-move {
+      background: var(--sf2);
+      border: 1px solid rgba(106, 180, 255, .3);
+      border-radius: 4px;
+      padding: 10px 12px;
+      grid-column: span 2
+    }
+
+    .rd-move .rd-val {
+      color: var(--info);
+      font-size: 26px
+    }
+
+    /* chart container styling */
+    .chart-container {
+      width: 100%;
+      height: 180px;
+      margin-top: 16px;
+      position: relative;
+    }
+
+    /* buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: var(--r);
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap
+    }
+
+    .btn:active {
+      transform: translateY(1px)
+    }
+
+    .btn-p {
+      background: var(--accent);
+      color: #050f0a
+    }
+
+    .btn-p:hover {
+      background: #1afcb5;
+      box-shadow: 0 0 16px rgba(0, 229, 160, .3)
+    }
+
+    .btn-s {
+      background: var(--sf2);
+      color: var(--text);
+      border: 1px solid var(--border)
+    }
+
+    .btn-s:hover {
+      border-color: var(--accent2);
+      color: var(--accent)
+    }
+
+    .btn-d {
+      background: rgba(255, 77, 77, .12);
+      color: var(--danger);
+      border: 1px solid rgba(255, 77, 77, .3)
+    }
+
+    .btn-d:hover {
+      background: rgba(255, 77, 77, .22)
+    }
+
+    .btn-w {
+      background: rgba(255, 184, 0, .12);
+      color: var(--warn);
+      border: 1px solid rgba(255, 184, 0, .3)
+    }
+
+    .btn-w:hover {
+      background: rgba(255, 184, 0, .22)
+    }
+
+    .btn-i {
+      background: rgba(106, 180, 255, .12);
+      color: var(--info);
+      border: 1px solid rgba(106, 180, 255, .3)
+    }
+
+    .btn-i:hover {
+      background: rgba(106, 180, 255, .22)
+    }
+
+    .btn-big {
+      padding: 18px 24px;
+      font-size: 16px;
+      width: 100%;
+      border-radius: 8px
+    }
+
+    .btn:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+      transform: none !important
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px
+    }
+
+    .row:last-child {
+      margin-bottom: 0
+    }
+
+    /* mpu action row */
+    .mpu-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px
+    }
+
+    /* power grid */
+    .pg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px
+    }
+
+    @media(max-width:400px) {
+      .pg {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .pr {
+      background: var(--sf2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 12px
+    }
+
+    .pr-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--dim)
+    }
+
+    .pr-val {
+      font-size: 22px;
+      font-weight: 700;
+      font-family: var(--mono);
+      color: var(--text);
+      line-height: 1.1;
+      margin-top: 4px
+    }
+
+    .pu {
+      font-size: 12px;
+      color: var(--dim)
+    }
+
+    /* battery % bar */
+    .bat-bar-wrap {
+      margin-top: 10px
+    }
+
+    .bat-bar-bg {
+      height: 8px;
+      background: var(--sf2);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid var(--border)
+    }
+
+    .bat-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--accent);
+      transition: width .5s
+    }
+
+    .bat-bar-fill.low {
+      background: var(--danger)
+    }
+
+    .bat-bar-fill.mid {
+      background: var(--warn)
+    }
+
+    /* info table */
+    .itbl {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed
+    }
+
+    .itbl td {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      word-wrap: break-word
+    }
+
+    .itbl td:first-child {
+      color: var(--dim);
+      width: 38%
+    }
+
+    .itbl td:last-child {
+      font-weight: 600;
+      font-family: var(--mono)
+    }
+
+    .itbl tr:last-child td {
+      border-bottom: none
+    }
+
+    /* tid input row */
+    .tid-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px
+    }
+
+    .tid-in {
+      flex: 1;
+      background: var(--sf2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color .2s;
+      letter-spacing: .06em
+    }
+
+    .tid-in:focus {
+      border-color: var(--accent2)
+    }
+
+    .tid-in::placeholder {
+      color: var(--muted)
+    }
+
+    /* signal bars */
+    .sbars {
+      display: inline-flex;
+      gap: 2px;
+      align-items: flex-end;
+      margin-left: 6px
+    }
+
+    .sbar {
+      width: 5px;
+      border-radius: 1px;
+      background: var(--muted)
+    }
+
+    .sbar.on {
+      background: var(--accent)
+    }
+
+    /* terminal */
+    .term {
+      background: #080a09;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      font-family: var(--mono);
+      font-size: 12px;
+      height: 180px;
+      overflow-y: auto;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      line-height: 1.6
+    }
+
+    .term::-webkit-scrollbar {
+      width: 4px
+    }
+
+    .term::-webkit-scrollbar-thumb {
+      background: var(--muted);
+      border-radius: 2px
+    }
+
+    .t-tx {
+      color: var(--info)
+    }
+
+    .t-rx {
+      color: var(--accent)
+    }
+
+    .t-sy {
+      color: var(--dim)
+    }
+
+    .t-er {
+      color: var(--danger)
+    }
+
+    .at-row {
+      display: flex;
+      gap: 8px
+    }
+
+    .at-in {
+      flex: 1;
+      background: var(--sf2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color .2s
+    }
+
+    .at-in:focus {
+      border-color: var(--accent2)
+    }
+
+    .at-in::placeholder {
+      color: var(--muted)
+    }
+
+    .qbtn {
+      padding: 5px 9px;
+      font-size: 11px
+    }
+
+    /* result box */
+    .result {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: var(--r);
+      font-family: var(--mono);
+      font-size: 12px;
+      border: 1px solid var(--border);
+      background: var(--sf2);
+      min-height: 44px;
+      color: var(--dim);
+      line-height: 1.5
+    }
+
+    .result.ok {
+      border-color: rgba(0, 229, 160, .3);
+      color: var(--accent);
+      background: rgba(0, 229, 160, .05)
+    }
+
+    .result.fail {
+      border-color: rgba(255, 77, 77, .3);
+      color: var(--danger);
+      background: rgba(255, 77, 77, .05)
+    }
+
+    /* calibrate result box */
+    .cal-result {
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: var(--r);
+      font-family: var(--mono);
+      font-size: 12px;
+      border: 1px solid var(--border);
+      background: var(--sf2);
+      color: var(--dim);
+      line-height: 1.5;
+      min-height: 38px
+    }
+
+    .cal-result.ok {
+      border-color: rgba(106, 180, 255, .3);
+      color: var(--info);
+      background: rgba(106, 180, 255, .05)
+    }
+
+    .cal-result.fail {
+      border-color: rgba(255, 77, 77, .3);
+      color: var(--danger);
+      background: rgba(255, 77, 77, .05)
+    }
+
+    /* select */
+    .sel {
+      background: var(--sf2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 9px 12px;
+      outline: none;
+      width: 100%;
+      margin-bottom: 8px
+    }
+
+    .sel:focus {
+      border-color: var(--accent2)
+    }
+
+    /* divider */
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 14px 0
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="welcome-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h2>Select Target System</h2>
+      <div class="sys-list">
+        <button onclick="selectSystem('Kotropi', 't108')">Kotropi <span>t108</span></button>
+        <button onclick="selectSystem('Parashar', 't107')">Parashar <span>t107</span></button>
+        <button onclick="selectSystem('Gora Fam 1', 't68')">Gora Fam 1 <span>t68</span></button>
+        <button onclick="selectSystem('Gora Fam 2', 't41')">Gora Fam 2 <span>t41</span></button>
+        <button onclick="selectSystem('Gora Fam 3', 't40')">Gora Fam 3 <span>t40</span></button>
+        <button onclick="selectSystem('Testing', 't1')">Testing <span>t1</span></button>
+      </div>
+      <hr>
+      <div>
+        <div
+          style="font-size:11px; font-weight:700; color:var(--dim); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px;">
+          Custom System</div>
+        <input type="text" id="customName" placeholder="System Name (e.g. Test Site)" class="tid-in"
+          style="width:100%; margin-bottom:8px; font-family:var(--font); font-size:13px;">
+        <input type="text" id="customTid" placeholder="TID (e.g. t99)" class="tid-in"
+          style="width:100%; margin-bottom:12px;">
+        <button class="btn btn-p" style="width:100%" onclick="selectCustom()">Connect to Custom</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="topbar">
+    <div class="brand" id="main-brand" onclick="document.getElementById('welcome-modal').style.display = 'flex'"
+      title="Select Target System">
+      Land Slide Monitoring System <span id="brand-site"></span>
+    </div>
+    <div class="pill disconnected" id="pill">
+      <span class="dot"></span><span id="pillTxt">DISCONNECTED</span>
+    </div>
+  </div>
+
+  <div class="rbar" id="rbar">Reconnecting in <b id="rsec">5</b>s…</div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="tab(0)">SENSORS</div>
+    <div class="tab" onclick="tab(1)">POWER</div>
+    <div class="tab" onclick="tab(2)">GSM</div>
+    <div class="tab" onclick="tab(3)">LORA</div>
+    <div class="tab" onclick="tab(4)">SYSTEM</div>
+  </div>
+
+  <div class="page active" id="p0">
+    <div class="shdr">
+      <span class="stitle">Sensor Test</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readSensors()">Read All</button>
+        <button class="btn btn-s" style="padding:6px 11px;font-size:12px" id="autoBtn" onclick="toggleAuto()">Auto:
+          OFF</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">DHT22 <span class="badge b-wait" id="bd-dht">WAIT</span></div>
+        <label class="tgl"><input type="checkbox" id="tgl-dht" checked
+            onchange="toggleSensor('DHT22',this.checked)"><span class="tgl-track"></span><span
+            class="tgl-thumb"></span></label>
+      </div>
+      <div class="cbody">
+        <div class="rg">
+          <div class="rd">
+            <div class="rd-label">Temperature</div>
+            <div class="rd-val" id="v-dht-t">—<span class="unit">°C</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Humidity</div>
+            <div class="rd-val" id="v-dht-h">—<span class="unit">%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">BH1750 <span class="badge b-wait" id="bd-bh">WAIT</span></div>
+        <label class="tgl"><input type="checkbox" id="tgl-bh" checked
+            onchange="toggleSensor('BH1750',this.checked)"><span class="tgl-track"></span><span
+            class="tgl-thumb"></span></label>
+      </div>
+      <div class="cbody">
+        <div class="rg">
+          <div class="rd">
+            <div class="rd-label">Illuminance</div>
+            <div class="rd-val" id="v-bh-l">—<span class="unit">lux</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">BMP180 <span class="badge b-wait" id="bd-bmp">WAIT</span></div>
+        <label class="tgl"><input type="checkbox" id="tgl-bmp" checked
+            onchange="toggleSensor('BMP180',this.checked)"><span class="tgl-track"></span><span
+            class="tgl-thumb"></span></label>
+      </div>
+      <div class="cbody">
+        <div class="rg">
+          <div class="rd">
+            <div class="rd-label">Temperature</div>
+            <div class="rd-val" id="v-bmp-t">—<span class="unit">°C</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Pressure</div>
+            <div class="rd-val" id="v-bmp-p">—<span class="unit">hPa</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">Soil Moisture <span class="badge b-wait" id="bd-soil">WAIT</span></div>
+        <label class="tgl"><input type="checkbox" id="tgl-soil" checked
+            onchange="toggleSensor('SoilMoisture',this.checked)"><span class="tgl-track"></span><span
+            class="tgl-thumb"></span></label>
+      </div>
+      <div class="cbody">
+        <div class="rg">
+          <div class="rd">
+            <div class="rd-label">Moisture</div>
+            <div class="rd-val" id="v-soil-p">—<span class="unit">%</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Raw ADC</div>
+            <div class="rd-val" id="v-soil-r">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">MPU6050 <span class="badge b-wait" id="bd-mpu">WAIT</span></div>
+        <label class="tgl"><input type="checkbox" id="tgl-mpu" checked
+            onchange="toggleSensor('MPU6050',this.checked)"><span class="tgl-track"></span><span
+            class="tgl-thumb"></span></label>
+      </div>
+      <div class="cbody">
+        <div class="rg">
+          <div class="rd">
+            <div class="rd-label">Accel X</div>
+            <div class="rd-val" id="v-ax">—<span class="unit">m/s²</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Accel Y</div>
+            <div class="rd-val" id="v-ay">—<span class="unit">m/s²</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Accel Z</div>
+            <div class="rd-val" id="v-az">—<span class="unit">m/s²</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Gyro X</div>
+            <div class="rd-val" id="v-gx">—<span class="unit">°/s</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Gyro Y</div>
+            <div class="rd-val" id="v-gy">—<span class="unit">°/s</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Gyro Z</div>
+            <div class="rd-val" id="v-gz">—<span class="unit">°/s</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Temp</div>
+            <div class="rd-val" id="v-mpu-t">—<span class="unit">°C</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Roll</div>
+            <div class="rd-val" id="v-mpu-r">—<span class="unit">°</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Pitch</div>
+            <div class="rd-val" id="v-mpu-p">—<span class="unit">°</span></div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Yaw</div>
+            <div class="rd-val" id="v-mpu-y">—<span class="unit">°</span></div>
+          </div>
+          <div class="rd rd-move">
+            <div class="rd-label">Movement Count</div>
+            <div class="rd-val" id="v-mpu-mc">—</div>
+          </div>
+        </div>
+        <div class="mpu-actions">
+          <button class="btn btn-w" style="padding:7px 13px;font-size:12px" onclick="resetMovement()">Reset Movement
+            Count</button>
+          <button class="btn btn-i" style="padding:7px 13px;font-size:12px" onclick="calibrateMPU()">Calibrate</button>
+        </div>
+        <div class="cal-result" id="mpu-cal-result">Press Calibrate to zero the MPU offsets. Keep the device level and
+          still.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">Rain Gauge <span class="badge b-wait" id="bd-rain">WAIT</span></div>
+        <label class="tgl"><input type="checkbox" id="tgl-rain" checked
+            onchange="toggleSensor('RainGauge',this.checked)"><span class="tgl-track"></span><span
+            class="tgl-thumb"></span></label>
+      </div>
+      <div class="cbody">
+        <div class="rg">
+          <div class="rd">
+            <div class="rd-label">Tips</div>
+            <div class="rd-val" id="v-rain-t">—</div>
+          </div>
+          <div class="rd">
+            <div class="rd-label">Rainfall</div>
+            <div class="rd-val" id="v-rain-m">—<span class="unit">mm</span></div>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn btn-w" style="padding:7px 13px;font-size:12px" onclick="resetRain()">Reset Counter</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">Sensor Health</div>
+      </div>
+      <div class="cbody">
+        <div class="rg">
+          <div class="rd" id="tile-sh-soil">
+            <div class="rd-label">Soil Node</div>
+            <div class="rd-val" id="v-sh-soil">—<span class="unit">V</span></div>
+          </div>
+          <div class="rd" id="tile-sh-weather">
+            <div class="rd-label">Weather Node</div>
+            <div class="rd-val" id="v-sh-weather">—<span class="unit">V</span></div>
+          </div>
+          <div class="rd" id="tile-sh-mpu">
+            <div class="rd-label">MPU Node</div>
+            <div class="rd-val" id="v-sh-mpu">—<span class="unit">V</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="p1">
+    <div class="shdr">
+      <span class="stitle">Power Monitor</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readBattery()">Battery</button>
+        <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readSolar()">Solar</button>
+        <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="readSystemPower()">System</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">Solar Panel</div>
+      </div>
+      <div class="cbody">
+        <div class="pg">
+          <div class="pr">
+            <div class="pr-label">Voltage</div>
+            <div class="pr-val" id="sv">—<span class="pu"> V</span></div>
+          </div>
+          <div class="pr">
+            <div class="pr-label">Current</div>
+            <div class="pr-val" id="si">—<span class="pu"> A</span></div>
+          </div>
+          <div class="pr">
+            <div class="pr-label">Power</div>
+            <div class="pr-val" id="sp">—<span class="pu"> mW</span></div>
+          </div>
+          <div class="pr">
+            <div class="pr-label">Energy</div>
+            <div class="pr-val" id="se">—<span class="pu"> Wh</span></div>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="solarChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">Battery</div>
+      </div>
+      <div class="cbody">
+        <div class="pg">
+          <div class="pr">
+            <div class="pr-label">Voltage</div>
+            <div class="pr-val" id="bv">—<span class="pu"> V</span></div>
+          </div>
+          <div class="pr">
+            <div class="pr-label">Current</div>
+            <div class="pr-val" id="bi">—<span class="pu"> mA</span></div>
+          </div>
+          <div class="pr">
+            <div class="pr-label">Power</div>
+            <div class="pr-val" id="bp">—<span class="pu"> mW</span></div>
+          </div>
+          <div class="pr">
+            <div class="pr-label">Energy</div>
+            <div class="pr-val" id="be">—<span class="pu"> Wh</span></div>
+          </div>
+          <div class="pr">
+            <div class="pr-label">Charging</div>
+            <div class="pr-val" id="b-chg" style="font-size:16px">—</div>
+          </div>
+        </div>
+        <div class="bat-bar-wrap">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-size:11px;color:var(--dim)">Charge Level</span>
+            <span class="badge b-wait" id="bat-pct-badge">—%</span>
+          </div>
+          <div class="bat-bar-bg">
+            <div class="bat-bar-fill" id="bat-bar" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="batteryChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">System Power</div>
+      </div>
+      <div class="cbody">
+        <table class="itbl">
+          <tr>
+            <td>Source</td>
+            <td id="sys-source">—</td>
+          </tr>
+          <tr>
+            <td>Voltage</td>
+            <td><span id="sys-pwr-v">—</span> V</td>
+          </tr>
+          <tr>
+            <td>Current</td>
+            <td><span id="sys-pwr-i">—</span> mA</td>
+          </tr>
+          <tr>
+            <td>Power</td>
+            <td><span id="sys-pwr-p">—</span> mW</td>
+          </tr>
+          <tr>
+            <td>Energy</td>
+            <td><span id="sys-pwr-e">—</span> Wh</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="p2">
+    <div class="shdr">
+      <span class="stitle">GSM / SIM A7670C</span>
+      <button class="btn btn-s" style="padding:6px 11px;font-size:12px" onclick="refreshGSM()">Refresh</button>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">Module Info <span class="badge b-wait" id="bd-gsm">WAIT</span></div>
+        <button class="btn btn-d" style="padding:6px 11px;font-size:12px" onclick="resetGSM()">Reset</button>
+      </div>
+      <div class="cbody">
+        <table class="itbl">
+          <!-- <tr><td>SIM Status</td><td id="gsm-sim">—</td></tr> -->
+          <tr>
+            <td>Signal (RSSI)</td>
+            <td>
+              <span id="gsm-rssi">—</span>
+              <span class="sbars">
+                <div class="sbar" style="height:6px" id="sb1"></div>
+                <div class="sbar" style="height:10px" id="sb2"></div>
+                <div class="sbar" style="height:14px" id="sb3"></div>
+                <div class="sbar" style="height:18px" id="sb4"></div>
+                <div class="sbar" style="height:22px" id="sb5"></div>
+              </span>
+            </td>
+          </tr>
+          <!-- <tr><td>Operator</td><td id="gsm-op">—</td></tr> -->
+          <!-- <tr><td>SIM Number</td><td id="gsm-num">—</td></tr> -->
+          <tr>
+            <td>IP Address</td>
+            <td id="gsm-ip" style="font-size:12px">—</td>
+          </tr>
+          <!-- <tr><td>GSM Voltage</td><td><span id="gsm-v">—</span> V</td></tr> -->
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">SIM Configuration</div>
+      </div>
+      <div class="cbody">
+        <div style="margin-bottom:8px;font-size:12px;color:var(--dim)">Select Operator / APN</div>
+        <select class="sel" id="opSelect">
+          <option value="airtelgprs.com">Airtel — airtelgprs.com</option>
+          <option value="internet">Jio — internet</option>
+          <option value="bsnlnet">BSNL — bsnlnet</option>
+          <option value="vi.gprs">Vi — vi.gprs</option>
+        </select>
+        <button class="btn btn-s" style="width:100%;margin-bottom:8px" onclick="setAPN()">Apply APN</button>
+        <button class="btn btn-s" style="width:100%"
+          onclick="ws_send({type:'gsm_at',command:'AT+CUSD=1,&quot;*121#&quot;'})">Get SIM Balance</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">Test</div>
+      </div>
+      <div class="cbody">
+        <div class="card">
+          <div class="chard">
+            <div class="ctitle">Test</div>
+          </div>
+
+          <div class="cbody">
+
+            <!-- SMS -->
+            <div style="margin-bottom:12px">
+              <div style="font-size:12px;font-weight:600;margin-bottom:6px">
+                Call Test
+              </div>
+
+              <input id="smsNumber" class="at-in" type="text" placeholder="+919876543210" style="margin-bottom:6px">
+
+              <button class="btn btn-s" onclick="gsmTestSms()">
+                Send SMS
+              </button>
+            </div>
+
+            <hr>
+
+            <!-- CALL -->
+            <div style="margin-bottom:12px">
+              <div style="font-size:12px;font-weight:600;margin-bottom:6px">
+                Call Test
+              </div>
+
+              <input id="callNumber" class="at-in" type="text" placeholder="+919876543210" style="margin-bottom:6px">
+
+              <button class="btn btn-s" onclick="gsmTestCall()">
+                Make Call
+              </button>
+            </div>
+
+            <hr>
+
+            <!-- API -->
+            <div style="margin-bottom:12px">
+              <div style="font-size:12px;font-weight:600;margin-bottom:6px">
+                API Test
+              </div>
+
+              <textarea id="apiPayload" class="at-in" rows="4" placeholder='{"message":"hello"}'
+                style="width:100%;resize:vertical;margin-bottom:6px"></textarea>
+
+              <button class="btn btn-s" onclick="gsmTestAPI()">
+                Send API Request
+              </button>
+            </div>
+
+            <hr>
+
+            <!-- OTA -->
+            <div style="margin-bottom:12px">
+              <div style="font-size:12px;font-weight:600;margin-bottom:6px">
+                OTA Update
+              </div>
+
+              <input id="otaUrl" class="at-in" type="text" placeholder="https://server.com/firmware.bin"
+                style="margin-bottom:6px">
+
+              <button class="btn btn-w" onclick="gsmTestOTA()">
+                Start OTA
+              </button>
+            </div>
+
+            <div class="result" id="gsm-result">
+              Run a test to see result.
+            </div>
+
+          </div>
+        </div>
+        <div class="result" id="gsm-result">Run a test to see result.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">AT Terminal</div>
+      </div>
+      <div class="cbody">
+        <div class="term" id="term">
+          <div class="t-sy">AT terminal ready.</div>
+        </div>
+        <div class="at-row" style="margin-bottom:8px">
+          <input class="at-in" id="atIn" type="text" placeholder="AT+CSQ" autocomplete="off" spellcheck="false"
+            onkeydown="if(event.key==='Enter')sendAT()">
+          <button class="btn btn-p" onclick="sendAT()">Send</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-s qbtn" onclick="qat('AT')">AT</button>
+          <button class="btn btn-s qbtn" onclick="qat('AT+CSQ')">Signal</button>
+          <button class="btn btn-s qbtn" onclick="qat('AT+CNUM')">SIM No</button>
+          <button class="btn btn-s qbtn" onclick="qat('AT+COPS?')">Operator</button>
+          <button class="btn btn-s qbtn" onclick="qat('AT+CBC')">Voltage</button>
+          <button class="btn btn-s qbtn" onclick="qat('AT+CREG?')">Reg</button>
+          <button class="btn btn-s qbtn" onclick="qat('AT+CGDCONT?')">APN</button>
+          <button class="btn btn-s qbtn" onclick="qat('AT+CIMI')">IMSI</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="p3">
+    <div class="shdr" style="margin-top:2px"><span class="stitle">LoRa / Hooter</span></div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">LoRa RA-02 · 433 MHz <span class="badge b-wait" id="bd-lora">WAIT</span></div>
+      </div>
+      <div class="cbody">
+        <p style="font-size:13px;color:var(--dim);margin-bottom:16px;line-height:1.5">
+          Sends a trigger packet to the hooter Arduino (LoRa RX). The hooter will sound on receipt.
+        </p>
+        <button class="btn btn-p btn-big" onclick="triggerHooter()">TRIGGER HOOTER</button>
+        <div class="result" id="lora-result">Press the button to send a LoRa trigger.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="p4">
+    <div class="shdr" style="margin-top:2px"><span class="stitle">Device Configuration</span></div>
+
+    <div class="card">
+      <div class="chard">
+        <div class="ctitle">System Info</div>
+        <button class="btn btn-s" style="padding:6px 11px;font-size:12px"
+          onclick="ws_send({type:'system_info'})">Refresh</button>
+        <button class="btn btn-d" style="padding:6px 11px;font-size:12px" onclick="rebootSystem()">Reboot
+          System</button>
+      </div>
+      <div class="cbody">
+        <table class="itbl">
+          <tr>
+            <td>Device Name</td>
+            <td id="sys-name">—</td>
+          </tr>
+          <tr>
+            <td>Firmware Version</td>
+            <td id="sys-fw">—</td>
+          </tr>
+          <tr>
+            <td>Time</td>
+            <td id="sys-time">—</td>
+          </tr>
+          <tr>
+            <td>Terminal ID (TID)</td>
+            <td id="sys-tid">—</td>
+          </tr>
+          <tr>
+            <td>MAC Address</td>
+            <td id="sys-mac">—</td>
+          </tr>
+          <tr>
+            <td>ESP32 Uptime</td>
+            <td id="sys-up">—</td>
+          </tr>
+          <tr>
+            <td>Free Heap</td>
+            <td id="sys-heap">—</td>
+          </tr>
+          <tr>
+            <td>MQTT Broker</td>
+            <td>76.13.243.127:9001</td>
+          </tr>
+          <tr>
+            <td>Pub Topic</td>
+            <td id="sys-pub-topic" style="font-size:11px; color:var(--text);">—</td>
+          </tr>
+          <tr>
+            <td>Sub Topic</td>
+            <td id="sys-sub-topic" style="font-size:11px; color:var(--text);">—</td>
+          </tr>
+        </table>
+        <div class="tid-row">
+          <input class="tid-in" id="tidInput" type="text" placeholder="Change TID physically on ESP32" maxlength="20"
+            autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')saveTID()">
+          <button class="btn btn-p" style="padding:9px 16px" onclick="saveTID()">Write TID</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    'use strict';
+
+    // ── MQTT broker config ────────────────────────────────────────────────────────
+    const BROKER = 'ws://76.13.243.127:9001';
+    const MQTT_USER = 'lms_mqtt_broker';
+    const MQTT_PASS = 'landslidemonitoringsystem';
+
+    // Dynamic topics set via the Welcome Modal
+    let PUB_TOPIC = '';
+    let SUB_TOPIC = '';
+    let CURRENT_TID = '';
+    let CURRENT_SYS = '';
+
+    let client = null, rTimer = null, rTick = null;
+    let autoOn = false, autoTimer = null;
+    const AUTO_MS = 5000;
+
+    // Chart Tracking Contexts (10-minute trailing data windows)
+    let solarHistory = [];
+    let batteryHistory = [];
+    let solarChart = null;
+    let batteryChart = null;
+
+    // ── Selection Logic ───────────────────────────────────────────────────────────
+    function selectSystem(name, tid) {
+      if (client && client.connected && SUB_TOPIC) {
+        client.unsubscribe(SUB_TOPIC);
+      }
+
+      CURRENT_SYS = name;
+      CURRENT_TID = tid;
+      PUB_TOPIC = `lms/devices/${tid}/configuration/send`;
+      SUB_TOPIC = `lms/devices/${tid}/configuration/callback`;
+
+      // UI Updates
+      document.getElementById('welcome-modal').style.display = 'none';
+      document.getElementById('brand-site').innerHTML = `<span style="color:var(--dim); font-weight:normal; margin:0 4px;">|</span> <span style="color:var(--text);">${name}</span> <span style="color:var(--dim); font-weight:normal; font-family:var(--mono);">${tid}</span>`;
+      document.getElementById('sys-pub-topic').textContent = PUB_TOPIC;
+      document.getElementById('sys-sub-topic').textContent = SUB_TOPIC;
+
+      if (client && client.connected) {
+        client.subscribe(SUB_TOPIC);
+        readSensors();
+        readBattery();
+        readSolar();
+        readSystemPower();
+        refreshGSM();
+        ws_send({ type: 'system_info' });
+      } else {
+        connect();
+      }
+    }
+
+    function selectCustom() {
+      const name = document.getElementById('customName').value.trim() || 'Custom Site';
+      const tid = document.getElementById('customTid').value.trim();
+      if (!tid) { alert('Please enter a valid TID to connect.'); return; }
+      selectSystem(name, tid);
+    }
+
+    // ── tabs ──────────────────────────────────────────────────────────────────────
+    const tabEls = document.querySelectorAll('.tab');
+    const pageEls = document.querySelectorAll('.page');
+    function tab(i) {
+      tabEls.forEach((t, j) => t.classList.toggle('active', i === j));
+      pageEls.forEach((p, j) => p.classList.toggle('active', i === j));
+    }
+
+    // ── toast pop-up (2-second floating message) ──────────────────────────────────
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+    }
+
+    // ── MQTT connection ───────────────────────────────────────────────────────────
+    function connect() {
+      if (client && client.connected) return;
+      setConn('connecting');
+      client = mqtt.connect(BROKER, {
+        username: MQTT_USER,
+        password: MQTT_PASS,
+        clientId: 'lms_browser_' + Math.random().toString(16).slice(2, 8),
+        reconnectPeriod: 0
+      });
+      client.on('connect', () => {
+        clearReconn();
+        setConn('connected');
+        client.subscribe(SUB_TOPIC);
+        readSensors();
+        readBattery();
+        readSolar();
+        readSystemPower();
+        refreshGSM();
+        ws_send({ type: 'system_info' });
+      });
+      client.on('message', (topic, payload) => {
+        try { handle(JSON.parse(payload.toString())); } catch (e) { }
+      });
+      client.on('close', () => { setConn('disconnected'); schedReconn(); });
+      client.on('error', () => { });
+    }
+
+    function ws_send(obj) {
+      if (client && client.connected && PUB_TOPIC)
+        client.publish(PUB_TOPIC, JSON.stringify(obj));
+    }
+
+    // ── reconnect ─────────────────────────────────────────────────────────────────
+    function schedReconn() {
+      clearTimeout(rTimer); let s = 5;
+      document.getElementById('rsec').textContent = s;
+      document.getElementById('rbar').classList.add('show');
+      rTick = setInterval(() => { s--; document.getElementById('rsec').textContent = Math.max(0, s); }, 1000);
+      rTimer = setTimeout(() => { clearReconn(); connect(); }, 5000);
+    }
+    function clearReconn() {
+      clearTimeout(rTimer); clearInterval(rTick);
+      document.getElementById('rbar').classList.remove('show');
+    }
+    function setConn(s) {
+      document.getElementById('pill').className = 'pill ' + s;
+      document.getElementById('pillTxt').textContent = s.toUpperCase();
+    }
+
+    // ── message router ────────────────────────────────────────────────────────────
+    function handle(d) {
+      if (d.msg) showToast(d.msg);
+
+      switch (d.type) {
+        case 'sensor_broadcast': updSensors(d); break;
+        case 'sensor_state': updSensorState(d); break;
+        case 'system_info': updSys(d); break;
+        case 'save_tid': updSaveTid(d); break;
+        case 'battery_status': updBattery(d); break;
+        case 'solar_status': updSolar(d); break;
+        case 'system_power': updSystemPower(d); break;
+        case 'gsm_info': updGSM(d); break;
+        case 'gsm_response': appendAT(d.response); break;
+        case 'gsm_test': updTest(d); break;
+        case 'lora_result': updLora(d); break;
+      }
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────────
+    function bdg(id, valid, state) {
+      const e = document.getElementById(id);
+      if (!state) { e.className = 'badge b-off'; e.textContent = 'OFF'; }
+      else if (valid) { e.className = 'badge b-ok'; e.textContent = 'OK'; }
+      else { e.className = 'badge b-err'; e.textContent = 'ERR'; }
+    }
+
+    function setVal(id, v, digits, unitHtml) {
+      const e = document.getElementById(id); if (!e) return;
+      const u = unitHtml || '';
+      e.innerHTML = (v === null || v === undefined)
+        ? '—' + u
+        : (typeof v === 'number' ? v.toFixed(digits) : v) + u;
+    }
+
+    function setText(id, v) {
+      const e = document.getElementById(id); if (e) e.textContent = v ?? '—';
+    }
+
+    function updateHealthTile(tileId, valId, voltage) {
+      const tile = document.getElementById(tileId);
+      if (!tile) return;
+      if (voltage !== undefined && voltage !== null) {
+        setVal(valId, voltage, 2, '<span class="unit">V</span>');
+        tile.classList.toggle('danger', Number(voltage) === 0);
+      }
+    }
+
+    // Rolling Time Buffer Management Engine (Filters anything older than 10 mins out)
+    function updateHistoryArray(arr, v, i) {
+      const now = Date.now();
+      arr.push({ t: now, v: parseFloat(v) || 0, i: parseFloat(i) || 0 });
+      const cutoff = now - (10 * 60 * 1000);
+      while (arr.length > 0 && arr[0].t < cutoff) {
+        arr.shift();
+      }
+    }
+
+    function renderChartUpdates(chartInstance, historyData) {
+      if (!chartInstance) return;
+
+      chartInstance.data.labels = historyData.map(pt => {
+        let t = new Date(pt.t);
+        return t.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+      });
+
+      chartInstance.data.datasets[0].data = historyData.map(pt => pt.v);
+      chartInstance.data.datasets[1].data = historyData.map(pt => pt.i);
+
+      // Dynamic current scaling
+      const currents = historyData.map(pt => Math.abs(pt.i || 0));
+
+      let maxCurrent = Math.max(...currents, 1);
+
+      // Add 20% headroom
+      maxCurrent *= 1.2;
+
+      chartInstance.options.scales.yCurrent.min = -20;
+      chartInstance.options.scales.yCurrent.max = maxCurrent;
+
+      chartInstance.update('none');
+    }
+
+    // ── Chart Generator Factory Engine ──────────────────────────────────────────
+    function initPowerChartInstance(canvasId, maxVoltScale) {
+      const canvasElement = document.getElementById(canvasId);
+      if (!canvasElement) return null;
+      const context = canvasElement.getContext('2d');
+
+      return new Chart(context, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Voltage (V)',
+              data: [],
+              borderColor: '#00e5a0',
+              backgroundColor: 'transparent',
+              yAxisID: 'yVoltage',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.15
+            },
+            {
+              label: 'Current (mA)',
+              data: [],
+              borderColor: '#ff4d4d',
+              backgroundColor: 'transparent',
+              yAxisID: 'yCurrent',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.15
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { color: '#d4dbd8', boxWidth: 12, font: { family: 'sans-serif', size: 10 } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#2a2e2c' },
+              ticks: { color: '#7a8884', font: { size: 9 }, maxRotation: 0 }
+            },
+            yVoltage: {
+              type: 'linear',
+              position: 'left',
+              min: 0,
+              max: maxVoltScale,
+              grid: { color: '#2a2e2c' },
+              ticks: { color: '#00e5a0', font: { size: 10 } },
+              title: { display: true, text: 'Voltage (V)', color: '#00e5a0', font: { size: 10, weight: 'bold' } }
+            },
+            yCurrent: {
+              type: 'linear',
+              position: 'right',
+              grid: {
+                drawOnChartArea: false
+              },
+              ticks: {
+                color: '#ff4d4d',
+                font: { size: 10 }
+              },
+              title: {
+                display: true,
+                text: 'Current (mA)',
+                color: '#ff4d4d',
+                font: { size: 10, weight: 'bold' }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ── sensor_broadcast ──────────────────────────────────────────────────────────
+    function updSensors(d) {
+      if (d.dht22) {
+        bdg('bd-dht', d.dht22.valid, d.dht22.state);
+        setVal('v-dht-t', d.dht22.temperature, 1, '<span class="unit">°C</span>');
+        setVal('v-dht-h', d.dht22.humidity, 1, '<span class="unit">%</span>');
+      }
+      if (d.bh1750) {
+        bdg('bd-bh', d.bh1750.valid, d.bh1750.state);
+        setVal('v-bh-l', d.bh1750.illuminance, 2, '<span class="unit">lux</span>');
+      }
+      if (d.bmp180) {
+        bdg('bd-bmp', d.bmp180.valid, d.bmp180.state);
+        setVal('v-bmp-t', d.bmp180.temperature, 1, '<span class="unit">°C</span>');
+        setVal('v-bmp-p', d.bmp180.pressure, 2, '<span class="unit">hPa</span>');
+      }
+      if (d.soil_moisture) {
+        bdg('bd-soil', d.soil_moisture.valid, d.soil_moisture.state);
+        setVal('v-soil-p', d.soil_moisture.percentage, 2, '<span class="unit">%</span>');
+        setText('v-soil-r', d.soil_moisture.raw);
+      }
+      if (d.mpu6050) {
+        bdg('bd-mpu', d.mpu6050.valid, d.mpu6050.state);
+        if (d.mpu6050.acceleration) {
+          setVal('v-ax', d.mpu6050.acceleration.x, 3, '<span class="unit">m/s²</span>');
+          setVal('v-ay', d.mpu6050.acceleration.y, 3, '<span class="unit">m/s²</span>');
+          setVal('v-az', d.mpu6050.acceleration.z, 3, '<span class="unit">m/s²</span>');
+        }
+        if (d.mpu6050.gyroscope) {
+          setVal('v-gx', d.mpu6050.gyroscope.x, 3, '<span class="unit">°/s</span>');
+          setVal('v-gy', d.mpu6050.gyroscope.y, 3, '<span class="unit">°/s</span>');
+          setVal('v-gz', d.mpu6050.gyroscope.z, 3, '<span class="unit">°/s</span>');
+        }
+        if (d.mpu6050.orientation) {
+          setVal('v-mpu-r', d.mpu6050.orientation.roll, 2, '<span class="unit">°</span>');
+          setVal('v-mpu-p', d.mpu6050.orientation.pitch, 2, '<span class="unit">°</span>');
+          setVal('v-mpu-y', d.mpu6050.orientation.yaw, 2, '<span class="unit">°</span>');
+        }
+        setText('v-mpu-mc', d.mpu6050.movement_count);
+        setText('v-mpu-t', d.mpu6050.temperature);
+        if (d.mpu6050.calibrated !== undefined) {
+          const cr = document.getElementById('mpu-cal-result');
+          cr.textContent = d.mpu6050.calibrated
+            ? 'Calibration done. Offsets applied.'
+            : 'Calibration failed — check sensor connection.';
+          cr.className = 'cal-result ' + (d.mpu6050.calibrated ? 'ok' : 'fail');
+        }
+      }
+      if (d.rain_gauge) {
+        bdg('bd-rain', d.rain_gauge.valid, d.rain_gauge.state);
+        setText('v-rain-t', d.rain_gauge.tip_count);
+        setVal('v-rain-m', d.rain_gauge.rainfall_mm, 2, '<span class="unit">mm</span>');
+      }
+      if (d.sensor_health) {
+        updateHealthTile('tile-sh-soil', 'v-sh-soil', d.sensor_health.soil_v);
+        updateHealthTile('tile-sh-weather', 'v-sh-weather', d.sensor_health.weather_v);
+        updateHealthTile('tile-sh-mpu', 'v-sh-mpu', d.sensor_health.mpu_v);
+      }
+    }
+
+    // ── sensor_state (toggle ack) ─────────────────────────────────────────────────
+    function updSensorState(d) {
+      const badgeMap = { BMP180: 'bd-bmp', BH1750: 'bd-bh', DHT22: 'bd-dht', MPU6050: 'bd-mpu', SoilMoisture: 'bd-soil', RainGauge: 'bd-rain' };
+      const tglMap = { BMP180: 'tgl-bmp', BH1750: 'tgl-bh', DHT22: 'tgl-dht', MPU6050: 'tgl-mpu', SoilMoisture: 'tgl-soil', RainGauge: 'tgl-rain' };
+      const e = document.getElementById(badgeMap[d.sensor]); if (!e) return;
+      if (d.state) { e.className = 'badge b-wait'; e.textContent = 'WAIT'; }
+      else { e.className = 'badge b-off'; e.textContent = 'OFF'; }
+      const tgl = document.getElementById(tglMap[d.sensor]);
+      if (tgl) tgl.checked = !!d.state;
+    }
+
+    // ── battery_status ────────────────────────────────────────────────────────────
+    function updBattery(d) {
+      setVal('bv', d.voltage, 2, '<span class="pu"> V</span>');
+      setVal('bi', d.current, 3, '<span class="pu"> mA</span>');
+      setVal('bp', d.power_mw, 2, '<span class="pu"> mW</span>');
+      setVal('be', d.energy_wh, 3, '<span class="pu"> Wh</span>');
+      const chgEl = document.getElementById('b-chg');
+      if (chgEl) chgEl.textContent = (d.charging !== undefined) ? (d.charging ? 'YES' : 'NO') : '—';
+      if (d.percent !== undefined) {
+        const pctR = Math.round(d.percent);
+        const bdgEl = document.getElementById('bat-pct-badge');
+        const barEl = document.getElementById('bat-bar');
+        bdgEl.textContent = pctR + '%';
+        bdgEl.className = 'badge ' + (pctR < 20 ? 'b-err' : pctR < 50 ? 'b-wait' : 'b-ok');
+        barEl.style.width = pctR + '%';
+        barEl.className = 'bat-bar-fill ' + (pctR < 20 ? 'low' : pctR < 50 ? 'mid' : '');
+      }
+      if (d.voltage !== undefined && d.current !== undefined) {
+        updateHistoryArray(batteryHistory, d.voltage, d.current);
+        renderChartUpdates(batteryChart, batteryHistory);
+      }
+    }
+
+    // ── solar_status ──────────────────────────────────────────────────────────────
+    function updSolar(d) {
+      setVal('sv', d.voltage, 2, '<span class="pu"> V</span>');
+      setVal('si', d.current, 3, '<span class="pu"> mA</span>');
+      setVal('sp', d.power_mw, 2, '<span class="pu"> mW</span>');
+      setVal('se', d.energy_wh, 3, '<span class="pu"> Wh</span>');
+      if (d.voltage !== undefined && d.current !== undefined) {
+        updateHistoryArray(solarHistory, d.voltage, d.current);
+        renderChartUpdates(solarChart, solarHistory);
+      }
+    }
+
+    // ── system_power ──────────────────────────────────────────────────────────────
+    function updSystemPower(d) {
+      setText('sys-source', d.source);
+      setVal('sys-pwr-v', d.voltage, 2);
+      setVal('sys-pwr-i', d.current, 3);
+      setVal('sys-pwr-p', d.power_mw, 2);
+      setVal('sys-pwr-e', d.energy_wh, 3);
+    }
+
+    // ── system_info ───────────────────────────────────────────────────────────────
+    function updSys(d) {
+      if (d.uptime_s !== undefined) setText('sys-up', fmtUptime(d.uptime_s));
+      if (d.free_heap !== undefined) setText('sys-heap', (d.free_heap / 1024).toFixed(1) + ' KB');
+      if (d.tid !== undefined) setText('sys-tid', d.tid || '(not set)');
+      if (d.mac !== undefined) setText('sys-mac', d.mac);
+      if (d.device_name !== undefined) setText('sys-name', d.device_name);
+      if (d.firmware_version !== undefined) setText('sys-fw', d.firmware_version);
+      if (d.current_time !== undefined) setText('sys-time', d.current_time);
+      const rssi = d.rssi ?? 0;
+      if (d.ip !== undefined) setText('gsm-ip', d.ip);
+      setText('gsm-rssi', rssi);
+      [['sb1', 2], ['sb2', 8], ['sb3', 14], ['sb4', 20], ['sb5', 26]].forEach(([id, t]) => {
+        document.getElementById(id).classList.toggle('on', rssi >= t);
+      });
+      const b = document.getElementById('bd-gsm');
+      if (d.ip) { b.className = 'badge b-ok'; b.textContent = 'OK'; }
+      else { b.className = 'badge b-err'; b.textContent = 'NO NET'; }
+    }
+
+    // ── save_tid ack ──────────────────────────────────────────────────────────────
+    function updSaveTid(d) {
+      if (d.tid !== undefined) setText('sys-tid', d.tid);
+    }
+
+    function fmtUptime(s) {
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+      return `${h}h ${m}m ${ss}s`;
+    }
+
+    // ── GSM ───────────────────────────────────────────────────────────────────────
+    function updGSM(d) {
+      const b = document.getElementById('bd-gsm');
+      if (d.registered) { b.className = 'badge b-ok'; b.textContent = 'OK'; }
+      else { b.className = 'badge b-err'; b.textContent = 'NO NET'; }
+      setText('gsm-sim', d.sim_status);
+      setText('gsm-op', d.operator);
+      setText('gsm-num', d.sim_number);
+      setText('gsm-ip', d.ip);
+      if (d.voltage !== undefined) setText('gsm-v', d.voltage.toFixed(2));
+      const rssi = d.rssi ?? 0;
+      setText('gsm-rssi', rssi);
+      [['sb1', 2], ['sb2', 8], ['sb3', 14], ['sb4', 20], ['sb5', 26]].forEach(([id, t]) => {
+        document.getElementById(id).classList.toggle('on', rssi >= t);
+      });
+    }
+
+    function appendAT(txt) {
+      const term = document.getElementById('term');
+      const el = document.createElement('div');
+      el.className = 't-rx'; el.textContent = (txt || '').trim();
+      term.appendChild(el); term.scrollTop = term.scrollHeight;
+    }
+
+    function updTest(d) {
+      const e = document.getElementById('gsm-result');
+      e.textContent = d.result || '—';
+      e.className = 'result ' + (d.success ? 'ok' : 'fail');
+    }
+
+    function updLora(d) {
+      const e = document.getElementById('lora-result');
+      const b = document.getElementById('bd-lora');
+      if (d.sent) {
+        e.textContent = 'Packet sent. Hooter should activate within 2s.';
+        e.className = 'result ok'; b.className = 'badge b-ok'; b.textContent = 'OK';
+      } else {
+        e.textContent = 'Send failed — check LoRa wiring / hooter power.';
+        e.className = 'result fail'; b.className = 'badge b-err'; b.textContent = 'ERR';
+      }
+    }
+
+    // ── actions ───────────────────────────────────────────────────────────────────
+    function readSensors() { ws_send({ type: 'sensor_broadcast' }); }
+    function readBattery() { ws_send({ type: 'battery_status' }); }
+    function readSolar() { ws_send({ type: 'solar_status' }); }
+    function readSystemPower() { ws_send({ type: 'system_power' }); }
+    function refreshGSM() { ws_send({ type: 'system_info' }); }
+
+    function toggleSensor(name, on) {
+      ws_send({ type: 'sensor_state', sensor: name, state: on });
+    }
+
+    function toggleAuto() {
+      autoOn = !autoOn;
+      document.getElementById('autoBtn').textContent = 'Auto: ' + (autoOn ? 'ON' : 'OFF');
+      if (autoOn) {
+        autoTimer = setInterval(() => { readSensors(); readBattery(); readSolar(); readSystemPower(); refreshGSM(); }, AUTO_MS);
+      } else {
+        clearInterval(autoimer);
+      }
+    }
+
+    function triggerHooter() {
+      document.getElementById('lora-result').textContent = 'Sending LoRa packet…';
+      document.getElementById('lora-result').className = 'result';
+      ws_send({ type: 'lora_trigger', value: 1 });
+    }
+
+    // function gsmTest(t) {
+    //   document.getElementById('gsm-result').textContent = 'Running ' + t + ' test…';
+    //   document.getElementById('gsm-result').className   = 'result';
+    //   ws_send({ type: 'gsm_test', test: t });
+    // }
+
+    function gsmTestSms() {
+      ws_send({
+        type: 'send_sms',
+        number: document.getElementById('smsNumber').value,
+      });
+    }
+
+    function gsmTestCall() {
+      ws_send({
+        type: 'gsm_test',
+        test: 'call',
+        number: document.getElementById('callNumber').value
+      });
+    }
+
+    function gsmTestAPI() {
+      ws_send({
+        type: 'hit_api',
+        // test: 'api',
+        // payload: document.getElementById('apiPayload').value
+      });
+    }
+
+    function gsmTestOTA() {
+      ws_send({
+        type: 'update_device',
+        // test: 'ota',
+        url: document.getElementById('otaUrl').value
+      });
+    }
+
+    function resetGSM() { ws_send({ type: 'gsm_reset' }); }
+
+    function rebootSystem() { ws_send({ type: 'reboot' }); }
+
+    function setAPN() {
+      const apn = document.getElementById('opSelect').value;
+      ws_send({ type: 'gsm_at', command: `AT+CGDCONT=1,"IP","${apn}"` });
+    }
+
+    function sendAT() {
+      const inp = document.getElementById('atIn');
+      const cmd = inp.value.trim(); if (!cmd) return;
+      const term = document.getElementById('term');
+      const el = document.createElement('div'); el.className = 't-tx'; el.textContent = '> ' + cmd;
+      term.appendChild(el); term.scrollTop = term.scrollHeight;
+      ws_send({ type: 'gsm_at', command: cmd });
+      inp.value = '';
+    }
+
+    function qat(cmd) { document.getElementById('atIn').value = cmd; sendAT(); }
+    function resetRain() { ws_send({ type: 'rain_reset' }); }
+    function resetMovement() { ws_send({ type: 'mpu_reset' }); }
+
+    function calibrateMPU() {
       const cr = document.getElementById('mpu-cal-result');
-      cr.textContent = d.mpu6050.calibrated
-        ? 'Calibration done. Offsets applied.'
-        : 'Calibration failed — check sensor connection.';
-      cr.className = 'cal-result ' + (d.mpu6050.calibrated ? 'ok' : 'fail');
+      cr.textContent = 'Calibrating… keep device level and still.';
+      cr.className = 'cal-result';
+      ws_send({ type: 'mpu_calibrate' });
     }
-  }
-  if (d.rain_gauge) {
-    bdg('bd-rain', d.rain_gauge.valid, d.rain_gauge.state);
-    setText('v-rain-t', d.rain_gauge.tip_count);
-    setVal('v-rain-m', d.rain_gauge.rainfall_mm, 2, '<span class="unit">mm</span>');
-  }
-  if (d.sensor_health) {
-    updateHealthTile('tile-sh-soil', 'v-sh-soil', d.sensor_health.soil_v);
-    updateHealthTile('tile-sh-weather', 'v-sh-weather', d.sensor_health.weather_v);
-    updateHealthTile('tile-sh-mpu', 'v-sh-mpu', d.sensor_health.mpu_v);
-  }
-}
 
-// ── sensor_state (toggle ack) ─────────────────────────────────────────────────
-function updSensorState(d) {
-  const badgeMap = { BMP180:'bd-bmp', BH1750:'bd-bh', DHT22:'bd-dht', MPU6050:'bd-mpu', SoilMoisture:'bd-soil', RainGauge:'bd-rain' };
-  const tglMap   = { BMP180:'tgl-bmp', BH1750:'tgl-bh', DHT22:'tgl-dht', MPU6050:'tgl-mpu', SoilMoisture:'tgl-soil', RainGauge:'tgl-rain' };
-  const e = document.getElementById(badgeMap[d.sensor]); if (!e) return;
-  if (d.state) { e.className = 'badge b-wait'; e.textContent = 'WAIT'; }
-  else         { e.className = 'badge b-off';  e.textContent = 'OFF';  }
-  const tgl = document.getElementById(tglMap[d.sensor]);
-  if (tgl) tgl.checked = !!d.state;
-}
+    function saveTID() {
+      const inp = document.getElementById('tidInput');
+      const tid = inp.value.trim();
+      if (!tid) { showToast('Enter a TID first'); return; }
+      ws_send({ type: 'save_tid', tid: tid });
+      inp.value = '';
+    }
 
-// ── battery_status ────────────────────────────────────────────────────────────
-function updBattery(d) {
-  setVal('bv', d.voltage,   2, '<span class="pu"> V</span>');
-  setVal('bi', d.current,   3, '<span class="pu"> A</span>');
-  setVal('bp', d.power_mw,  2, '<span class="pu"> mW</span>');
-  setVal('be', d.energy_wh, 3, '<span class="pu"> Wh</span>');
-  const chgEl = document.getElementById('b-chg');
-  if (chgEl) chgEl.textContent = (d.charging !== undefined) ? (d.charging ? 'YES' : 'NO') : '—';
-  if (d.percent !== undefined) {
-    const pctR = Math.round(d.percent);
-    const bdgEl = document.getElementById('bat-pct-badge');
-    const barEl = document.getElementById('bat-bar');
-    bdgEl.textContent = pctR + '%';
-    bdgEl.className   = 'badge ' + (pctR < 20 ? 'b-err' : pctR < 50 ? 'b-wait' : 'b-ok');
-    barEl.style.width  = pctR + '%';
-    barEl.className    = 'bat-bar-fill ' + (pctR < 20 ? 'low' : pctR < 50 ? 'mid' : '');
-  }
-  if (d.voltage !== undefined && d.current !== undefined) {
-    updateHistoryArray(batteryHistory, d.voltage, d.current);
-    renderChartUpdates(batteryChart, batteryHistory);
-  }
-}
-
-// ── solar_status ──────────────────────────────────────────────────────────────
-function updSolar(d) {
-  setVal('sv', d.voltage,   2, '<span class="pu"> V</span>');
-  setVal('si', d.current,   3, '<span class="pu"> A</span>');
-  setVal('sp', d.power_mw,  2, '<span class="pu"> mW</span>');
-  setVal('se', d.energy_wh, 3, '<span class="pu"> Wh</span>');
-  if (d.voltage !== undefined && d.current !== undefined) {
-    updateHistoryArray(solarHistory, d.voltage, d.current);
-    renderChartUpdates(solarChart, solarHistory);
-  }
-}
-
-// ── system_power ──────────────────────────────────────────────────────────────
-function updSystemPower(d) {
-  setText('sys-source', d.source);
-  setVal('sys-pwr-v', d.voltage,   2);
-  setVal('sys-pwr-i', d.current,   3);
-  setVal('sys-pwr-p', d.power_mw,  2);
-  setVal('sys-pwr-e', d.energy_wh, 3);
-}
-
-// ── system_info ───────────────────────────────────────────────────────────────
-function updSys(d) {
-  if (d.uptime_s  !== undefined) setText('sys-up',   fmtUptime(d.uptime_s));
-  if (d.free_heap !== undefined) setText('sys-heap', (d.free_heap / 1024).toFixed(1) + ' KB');
-  if (d.tid !== undefined)       setText('sys-tid',  d.tid || '(not set)');
-  if (d.mac !== undefined)       setText('sys-mac',  d.mac);
-}
-
-// ── save_tid ack ──────────────────────────────────────────────────────────────
-function updSaveTid(d) {
-  if (d.tid !== undefined) setText('sys-tid', d.tid);
-}
-
-function fmtUptime(s) {
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
-  return `${h}h ${m}m ${ss}s`;
-}
-
-// ── GSM ───────────────────────────────────────────────────────────────────────
-function updGSM(d) {
-  const b = document.getElementById('bd-gsm');
-  if (d.registered) { b.className = 'badge b-ok';  b.textContent = 'OK';     }
-  else              { b.className = 'badge b-err'; b.textContent = 'NO NET'; }
-  setText('gsm-sim', d.sim_status);
-  setText('gsm-op',  d.operator);
-  setText('gsm-num', d.sim_number);
-  setText('gsm-ip',  d.ip);
-  if (d.voltage !== undefined) setText('gsm-v', d.voltage.toFixed(2));
-  const rssi = d.rssi ?? 0;
-  setText('gsm-rssi', rssi);
-  [['sb1',2],['sb2',8],['sb3',14],['sb4',20],['sb5',26]].forEach(([id,t]) => {
-    document.getElementById(id).classList.toggle('on', rssi >= t);
-  });
-}
-
-function appendAT(txt) {
-  const term = document.getElementById('term');
-  const el = document.createElement('div');
-  el.className = 't-rx'; el.textContent = (txt || '').trim();
-  term.appendChild(el); term.scrollTop = term.scrollHeight;
-}
-
-function updTest(d) {
-  const e = document.getElementById('gsm-result');
-  e.textContent = d.result || '—';
-  e.className   = 'result ' + (d.success ? 'ok' : 'fail');
-}
-
-function updLora(d) {
-  const e = document.getElementById('lora-result');
-  const b = document.getElementById('bd-lora');
-  if (d.sent) {
-    e.textContent = 'Packet sent. Hooter should activate within 2s.';
-    e.className = 'result ok'; b.className = 'badge b-ok'; b.textContent = 'OK';
-  } else {
-    e.textContent = 'Send failed — check LoRa wiring / hooter power.';
-    e.className = 'result fail'; b.className = 'badge b-err'; b.textContent = 'ERR';
-  }
-}
-
-// ── actions ───────────────────────────────────────────────────────────────────
-function readSensors()    { ws_send({ type: 'sensor_broadcast' }); }
-function readBattery()    { ws_send({ type: 'battery_status'   }); }
-function readSolar()      { ws_send({ type: 'solar_status'     }); }
-function readSystemPower(){ ws_send({ type: 'system_power'     }); }
-function refreshGSM()     { ws_send({ type: 'gsm_info'         }); }
-
-function toggleSensor(name, on) {
-  ws_send({ type: 'sensor_state', sensor: name, state: on });
-}
-
-function toggleAuto() {
-  autoOn = !autoOn;
-  document.getElementById('autoBtn').textContent = 'Auto: ' + (autoOn ? 'ON' : 'OFF');
-  if (autoOn) {
-    autoTimer = setInterval(() => { readSensors(); readBattery(); readSolar(); readSystemPower(); }, AUTO_MS);
-  } else {
-    clearInterval(autoTimer);
-  }
-}
-
-function triggerHooter() {
-  document.getElementById('lora-result').textContent = 'Sending LoRa packet…';
-  document.getElementById('lora-result').className   = 'result';
-  ws_send({ type: 'lora_trigger', value: 1 });
-}
-
-function gsmTest(t) {
-  document.getElementById('gsm-result').textContent = 'Running ' + t + ' test…';
-  document.getElementById('gsm-result').className   = 'result';
-  ws_send({ type: 'gsm_test', test: t });
-}
-
-function resetGSM() { ws_send({ type: 'gsm_reset' }); }
-
-function setAPN() {
-  const apn = document.getElementById('opSelect').value;
-  ws_send({ type: 'gsm_at', command: `AT+CGDCONT=1,"IP","${apn}"` });
-}
-
-function sendAT() {
-  const inp = document.getElementById('atIn');
-  const cmd = inp.value.trim(); if (!cmd) return;
-  const term = document.getElementById('term');
-  const el = document.createElement('div'); el.className = 't-tx'; el.textContent = '> ' + cmd;
-  term.appendChild(el); term.scrollTop = term.scrollHeight;
-  ws_send({ type: 'gsm_at', command: cmd });
-  inp.value = '';
-}
-
-function qat(cmd) { document.getElementById('atIn').value = cmd; sendAT(); }
-function resetRain() { ws_send({ type: 'rain_reset' }); }
-function resetMovement() { ws_send({ type: 'mpu_reset' }); }
-
-function calibrateMPU() {
-  const cr = document.getElementById('mpu-cal-result');
-  cr.textContent = 'Calibrating… keep device level and still.';
-  cr.className   = 'cal-result';
-  ws_send({ type: 'mpu_calibrate' });
-}
-
-function saveTID() {
-  const inp = document.getElementById('tidInput');
-  const tid = inp.value.trim();
-  if (!tid) { showToast('Enter a TID first'); return; }
-  ws_send({ type: 'save_tid', tid: tid });
-  inp.value = '';
-}
-
-// Instantiate Visual Render Engines on DOM Load completion
-window.addEventListener('DOMContentLoaded', () => {
-  solarChart = initPowerChartInstance('solarChart', 30);
-  batteryChart = initPowerChartInstance('batteryChart', 8);
-});
-</script>
+    // Instantiate Visual Render Engines on DOM Load completion
+    window.addEventListener('DOMContentLoaded', () => {
+      solarChart = initPowerChartInstance('solarChart', 30);
+      batteryChart = initPowerChartInstance('batteryChart', 8);
+    });
+  </script>
 </body>
+
 </html>
