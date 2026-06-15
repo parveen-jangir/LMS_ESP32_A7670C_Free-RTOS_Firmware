@@ -2,9 +2,10 @@
 #include <stdarg.h>
 
 // ─── Constructor ──────────────────────────────────────────────────────────────
-GSM_OTA::GSM_OTA(HardwareSerial& gsmSerial, HardwareSerial& debugSerial)
+GSM_OTA::GSM_OTA(HardwareSerial& gsmSerial, HardwareSerial& debugSerial, DataLogger& dataLogger)
     : _gsm(gsmSerial),
       _dbg(debugSerial),
+      _dataLogger(dataLogger),
       _chunkSize(GSM_OTA_CHUNK_SIZE),
       _cmdTimeout(GSM_OTA_CMD_TIMEOUT_MS),
       _httpTimeout(GSM_OTA_HTTP_TIMEOUT_MS),

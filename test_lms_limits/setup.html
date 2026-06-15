@@ -504,8 +504,10 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
         <tr><td>ESP32 Uptime</td><td id="sys-up">—</td></tr>
         <tr><td>Free Heap</td><td id="sys-heap">—</td></tr>
         <tr><td>MQTT Broker</td><td>76.13.243.127:9001</td></tr>
-        <tr><td>Pub Topic</td><td>lms/devices/841fe82aae34/configuration/send</td></tr>
-        <tr><td>Sub Topic</td><td>lms/devices/841fe82aae34/configuration/callback</td></tr>
+        <tr><td>Pub Topic</td><td>lms/devices/841fe82aade4/configuration/send</td></tr>
+        <tr><td>Sub Topic</td><td>lms/devices/841fe82aade4/configuration/callback</td></tr>
+        <!-- <tr><td>Pub Topic</td><td>lms/devices/841fe82aae34/configuration/send</td></tr>
+        <tr><td>Sub Topic</td><td>lms/devices/841fe82aae34/configuration/callback</td></tr> -->
       </table>
       <!-- TID edit -->
       <div class="tid-row">
@@ -526,8 +528,10 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 const BROKER    = 'ws://76.13.243.127:9001';
 const MQTT_USER = 'lms_mqtt_broker';
 const MQTT_PASS = 'landslidemonitoringsystem';
-const PUB_TOPIC = 'lms/devices/841fe82aae34/configuration/send';
-const SUB_TOPIC = 'lms/devices/841fe82aae34/configuration/callback';
+const PUB_TOPIC = 'lms/devices/841fe82aade4/configuration/send';
+const SUB_TOPIC = 'lms/devices/841fe82aade4/configuration/callback';
+// const PUB_TOPIC = 'lms/devices/841fe82aae34/configuration/send';
+// const SUB_TOPIC = 'lms/devices/841fe82aae34/configuration/callback';
 
 let client = null, rTimer = null, rTick = null;
 let autoOn = false, autoTimer = null;

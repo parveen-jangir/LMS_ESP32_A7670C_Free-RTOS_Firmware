@@ -15,6 +15,7 @@
 #include "SoilMoisture/SoilMoisture.h"
 #include "RainGauge/RainGauge.h"
 #include <ArduinoJson.h>
+#include "DataLogger/DataLogger.h"
 
 class SensorManager {
 private:
@@ -25,6 +26,7 @@ private:
     DHT22Sensor* dht22;
     SoilMoistureSensor* soilMoisture;
     RainGaugeSensor* rainGauge;
+    DataLogger &dataLogger;
     
     // FreeRTOS
     SemaphoreHandle_t dataMutex;
@@ -48,7 +50,7 @@ private:
 public:
 
     TaskHandle_t sensorTaskHandle;
-    SensorManager();
+    SensorManager(DataLogger &dataLogger);
     ~SensorManager();
     
     // Initialization
@@ -87,6 +89,7 @@ public:
     // Status
     void printSensorStatus();
     void printLastReadings();
+    void confSensorWithDefaults();
 };
 
 #endif // SENSOR_MANAGER_H

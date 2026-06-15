@@ -4,6 +4,10 @@
 
 #include "storage_manager.h"
 
+StorageManager::StorageManager(DataLogger &dataLogger) : dataLogger(dataLogger)
+{
+}
+
 bool StorageManager::begin(bool formatOnFail)
 {
     if (!SPIFFS.begin(formatOnFail))
@@ -223,4 +227,30 @@ bool StorageManager::clearAllData(){
     Serial.println("[SPIFFS] Directories Recreated");
 
     return true;
+}
+
+void StorageManager::saveTid(const String &tid)
+{
+    if (!pref.begin("system", false)) // false = read/write
+    {
+        Serial.println("[SPIFFS] Failed to open");
+        return;
+    }
+
+    pref.putString("tid", tid);
+    pref.end();
+}
+
+String StorageManager::getTid()
+{
+    if (!pref.begin("system", true)) // true = read only
+    {
+        Serial.println("[SPIFFS] Failed to open");
+        return DEFAULT_TID;
+    }
+
+    String tid = pref.getString("tid", DEFAULT_TID);
+    pref.end();
+
+    return tid;
 }

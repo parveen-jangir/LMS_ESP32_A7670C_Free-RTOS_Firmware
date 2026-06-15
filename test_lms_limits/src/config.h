@@ -1,6 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// ==================== General Configuration ====================
+#define DEVICE_NAME         "LMS_ESP32_01"
+#define FIRMWARE_VERSION    "1.0.0"
+
 // ==================== I2C Configuration ====================
 #define I2C_SDA_PIN       21
 #define I2C_SCL_PIN       22
@@ -17,6 +21,7 @@
 #define BMP180_ADDRESS    0x77
 #define BH1750_ADDRESS    0x23
 #define MPU6050_ADDRESS   0x68
+#define INA3221_ADDRESS   0x40
 
 // ==================== Sensor State ====================
 #define SENSOR_ON         1
@@ -41,6 +46,7 @@
 // ==================== Debug Configuration ====================
 #define DEBUG_ENABLED             1
 #define DEBUG_SERIAL_BAUDRATE     115200
+#define DEBUG_GSM_RX              false
 
 // ==================== Adafruit BMP085 Mode ====================
 #define BMP085_MODE               Adafruit_BMP085::BMP085_ULTRAHIGHRES  // Ultra high resolution
@@ -84,7 +90,7 @@
 #define SENSOR_TASK_PRIORITY      7
 #define SENSOR_TASK_CORE          1    // Core 1 for sensor tasks
 
-#define GSM_TASK_STACK_SIZE       4096
+#define GSM_TASK_STACK_SIZE       8192
 #define GSM_TASK_PRIORITY         6
 #define GSM_TASK_CORE             1    // Core 1 for GSM tasks
 
@@ -103,6 +109,8 @@
 
 #define DEFAULT_TID "t1"
 #define API_HIT_INTERVAL_MS 10*60*1000  // 10 minutes
+
+#define LOG_DATA_MAX_SIZE 512
 
 #define OTA_URL "https://raw.githubusercontent.com/parveen-jangir/mqtt_bin_file/main/test_esp_ota.bin"
 #endif // CONFIG_H

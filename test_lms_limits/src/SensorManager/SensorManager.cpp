@@ -1,7 +1,7 @@
 #include "SensorManager.h"
 
-SensorManager::SensorManager()
-    : sensorTaskHandle(nullptr), dataMutex(nullptr),
+SensorManager::SensorManager(DataLogger &dataLogger)
+    : dataLogger(dataLogger), sensorTaskHandle(nullptr), dataMutex(nullptr),
       readIntervalMs(SENSOR_READ_INTERVAL_MS), taskRunning(false),
       bmp180Enabled(true), bh1750Enabled(true), mpu6050Enabled(true),
       dht22Enabled(true), soilMoistureEnabled(true), rainGaugeEnabled(true) {
@@ -549,3 +549,42 @@ String SensorManager::generateApiUrl(const String &tripletId)
     return url;
 }
 
+void SensorManager::confSensorWithDefaults()
+{
+    // Default calibration setup
+    Serial.println("[SENS] CONFIGURING SENSORS...");
+
+    // BMP180 calibration
+    setBMP180CalibrationOffset(0.0, 0.0);
+
+    // BH1750 calibration
+    setBH1750CalibrationOffset(0.0);
+
+    // MPU6050 calibration
+    setMPU6050CalibrationOffset(
+        0.0, 0.0, 0.0, // Accel offsets
+        0.0, 0.0, 0.0, // Gyro offsets
+        0.0            // Temp offset
+    );
+
+    // DHT22 calibration
+    setDHT22CalibrationOffset(0.0, 0.0);
+
+    // Soil Moisture calibration (0=dry, 4095=wet)
+    setSoilMoistureCalibrationOffset(0, 4095);
+
+    // Rain Gauge calibration (0.2794 mm per tip)
+    setRainGaugeTipVolume(0.2794);
+
+    // Set read interval
+    setReadInterval(5000);
+
+    Serial.println("[SENS] CONFIG DONE");
+    // Start continuous reading task
+    if (!startReadingTask())
+    {
+        Serial.println("[SENS][ERROR] Failed to start sensor task!");
+    }
+
+    printSensorStatus();
+}

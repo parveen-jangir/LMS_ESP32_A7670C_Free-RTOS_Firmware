@@ -8,16 +8,20 @@
 #include "command_handler/command_handler.h"
 #include "GSM_OTA/GSM_OTA.h"
 #include "LORA_Handler/LORA_Handler.h"
-#include "A7670C/A7670C.h"
+#include "A7670C_handler/A7670C.h"
 #include "config.h"
+#include "DataLogger/DataLogger.h"
+#include "power_handler/power_handler.h"
 
 HardwareSerial gsmSerial(2);
 
-SensorManager sensorManager;
-GSM_OTA gsmOta(gsmSerial, Serial);
-StorageManager STManager;
-A7670C modem(gsmSerial, MODEM_PWR_PIN);
-CommandHandler cmdHandler(sensorManager, STManager, gsmOta, modem);
+DataLogger dataLogger;
+powerMonitor power;
+StorageManager STManager(dataLogger);
+SensorManager sensorManager(dataLogger);
+GSM_OTA gsmOta(gsmSerial, Serial, dataLogger);
+A7670C modem(gsmSerial, MODEM_PWR_PIN, dataLogger);
+CommandHandler cmdHandler(sensorManager, STManager, gsmOta, modem, dataLogger, power);
 
 // static int lastReportedPercent = 0;
 
@@ -50,9 +54,39 @@ void setup()
     delay(200);
 
     Serial.println("\n=== LANDSLIDE MONITORING SYSTEM ===");
-    Serial.println(F("Initializing Sensor Manager..."));
 
     gsmSerial.begin(MODEM_BAUD_RATE, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
+
+    if (!dataLogger.begin("/system.log", "/system.idx", 65536))
+    {
+        Serial.println("[LOGGER] Failed to initialize");
+    }
+    else
+    {
+        Serial.println("[LOGGER] Initialized");
+        dataLogger.log('I', "[BOOT] Device booted");
+    }
+
+    if (sensorManager.initialize())
+    {
+        Serial.println(F("[MAIN] Sensor initialized"));
+        dataLogger.log('I', "[MAIN] Sensor initialized");
+        sensorManager.confSensorWithDefaults();
+        sensorManager.readAllSensors();
+        sensorManager.printLastReadings();
+    }
+    else
+    {
+        Serial.println(F("[MAIN] Sensor init failed"));
+        dataLogger.log('E', "[MAIN] Sensor init failed");
+    }
+
+    if (!power.begin()) {
+        Serial.println("[POWER] Failed to init");
+        dataLogger.log('E', "[POWER] Failed to init");
+    }
+
+    modem.begin();
 
     cmdHandler.begin();
 
@@ -67,21 +101,13 @@ void setup()
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 void loop()
 {
+    vTaskDelay(pdMS_TO_TICKS(20000));
+
+    if(!modem.getMQTTConnected() && !modem.getModuleReset())
+    {
+        modem.mqttConnect();
+        modem.mqttSubscribe(cmdHandler.getTopic());
+    }
+    
     // sendLoraAlaram_old();
-    // if (digitalRead(MPU_INTERRUPT_PIN))
-    // {
-        sensorManager.readAllSensors();
-        sensorManager.printLastReadings();
-    // }
-    // Serial.println(digitalRead(MPU_INTERRUPT_PIN));
-    vTaskDelay(pdMS_TO_TICKS(10000));
-
-
-    // Serial.printf("Pin 33: %d\n", digitalRead(33));
-    // if(digitalRead(33) == LOW) {
-        // Serial.println("Pin 33 is LOW - Triggering sensor read");
-        // sensorManager.readAllSensors();
-        // sensorManager.printLastReadings();
-    // }
-// vTaskDelay(pdMS_TO_TICKS(100)); // fast print
 }

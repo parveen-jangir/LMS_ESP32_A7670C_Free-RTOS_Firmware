@@ -17,6 +17,7 @@
 #include <Arduino.h>
 #include <esp_ota_ops.h>
 #include <esp_partition.h>
+#include "DataLogger/DataLogger.h"
 
 // ─── Result codes ─────────────────────────────────────────────────────────────
 enum OTAResult {
@@ -49,7 +50,7 @@ typedef void (*OTALogCallback)(const char* message);
 class GSM_OTA {
 public:
     // Constructor – pass HardwareSerial references
-    GSM_OTA(HardwareSerial& gsmSerial, HardwareSerial& debugSerial);
+    GSM_OTA(HardwareSerial& gsmSerial, HardwareSerial& debugSerial, DataLogger& dataLogger);
 
     // Initialise GSM UART (call in setup())
     void begin(uint32_t baud, int8_t rxPin, int8_t txPin);
@@ -85,6 +86,7 @@ public:
 private:
     HardwareSerial& _gsm;
     HardwareSerial& _dbg;
+    DataLogger&   _dataLogger;
 
     char     _apn[64];
     uint16_t _chunkSize;

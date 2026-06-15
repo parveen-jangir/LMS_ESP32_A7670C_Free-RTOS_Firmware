@@ -12,8 +12,10 @@
 #include "SensorManager/SensorManager.h"
 #include "local_storage/storage_manager.h"
 #include "GSM_OTA/GSM_OTA.h"
-#include "A7670C/A7670C.h"
+#include "A7670C_handler/A7670C.h"
 #include "config.h"
+#include "DataLogger/DataLogger.h"
+#include "power_handler/power_handler.h"
 
 struct commandFormat
 {
@@ -23,26 +25,42 @@ struct commandFormat
     bool formMqtt;
 };
 
+extern time_t getTime(String *formatted);
+
 class CommandHandler
 {
 public:
-    CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem);
+    CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem, DataLogger &dataLogger, powerMonitor &power);
 
-    static void mqttCallback(const String &topic, const String &payload);
-    static void onSmsReceived(SmsMessage msg);
-    static void onIncomingCall(const String& number);
+    void onMqttMessage(const A7670C::MQTTMessage &msg);
+    void onHttpAction(const HttpResponse &response);
+    void onOtaProgress(int percent, int written, int total);
 
     ~CommandHandler();
 
+    String getDeviceMac() const
+    {
+        return _deviceMac;
+    }
+
+    String getTopic() const
+    {
+        return _topic;
+    }
+
     void begin();
 
-    void configSensors();
+    time_t getTimeStr(String &formatted);
+
+    // void configSensors();
     void sendResponse(JsonDocument &response, bool webSoc = false, bool toMqtt = true);
 private:
     SensorManager &sensorMgr;
     StorageManager &storageMgr;
     GSM_OTA &gsmOta;
     A7670C &modem;
+    DataLogger &logger;
+    powerMonitor &power;
     String _deviceMac;
     String _topic;
     String tid = DEFAULT_TID;
@@ -51,9 +69,8 @@ private:
     QueueHandle_t cmdQueue     = nullptr;
     TaskHandle_t  workerHandle = nullptr;
     TaskHandle_t  apiHandle    = nullptr;
-    TaskHandle_t  gsmHandle    = nullptr;
     static void workerTask(void *param);
-    static void gsmTask(void *param);
+    // static void gsmTask(void *param);
     static void apiTask(void *param);
     
     void        workerLoop();
@@ -71,5 +88,25 @@ private:
     bool getSystemInfo(JsonDocument &doc, bool fromBle, bool fromMqtt);
 
     bool enqueue(const char *jsonStr, size_t len, bool fromBle = false);
+
+    void handleMqttMessage(const A7670C::MQTTMessage &msg);
+    void handleBootEvent(const String &line);
+    void handleNetworkEvent(const String &line);
+    void handleHttpAction(const HttpResponse &response);
+    void handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleBatteryStatus(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleSolarStatus(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleSystemPower(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleSendSMS(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleSaveTid(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleResetGsm(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleLogData(JsonDocument &doc, bool fromBle, bool fromMqtt);
+
+    static CommandHandler *_instance;
+
+    static void mqttCallback(const A7670C::MQTTMessage &msg);
+    static void bootCallback(const String &line);
+    static void networkCallback(const String &line);
+    static void httpCallback(const HttpResponse &response);
 
 };
