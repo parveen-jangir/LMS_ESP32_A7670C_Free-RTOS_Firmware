@@ -15,6 +15,7 @@
 #include "A7670C_handler/A7670C.h"
 #include "config.h"
 #include "DataLogger/DataLogger.h"
+#include "power_handler/power_handler.h"
 
 struct commandFormat
 {
@@ -29,7 +30,7 @@ extern time_t getTime(String *formatted);
 class CommandHandler
 {
 public:
-    CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem, DataLogger &dataLogger);
+    CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem, DataLogger &dataLogger, powerMonitor &power);
 
     void onMqttMessage(const A7670C::MQTTMessage &msg);
     void onHttpAction(const HttpResponse &response);
@@ -59,6 +60,7 @@ private:
     GSM_OTA &gsmOta;
     A7670C &modem;
     DataLogger &logger;
+    powerMonitor &power;
     String _deviceMac;
     String _topic;
     String tid = DEFAULT_TID;
@@ -92,6 +94,13 @@ private:
     void handleNetworkEvent(const String &line);
     void handleHttpAction(const HttpResponse &response);
     void handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleBatteryStatus(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleSolarStatus(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleSystemPower(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleSendSMS(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleSaveTid(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleResetGsm(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    void handleLogData(JsonDocument &doc, bool fromBle, bool fromMqtt);
 
     static CommandHandler *_instance;
 

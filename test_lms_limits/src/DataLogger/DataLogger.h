@@ -33,6 +33,7 @@ struct LoggerInfo
 class DataLogger
 {
 public:
+    bool isInitialized;
     DataLogger();
     ~DataLogger();
 

@@ -93,8 +93,8 @@ void CommandHandler::onOtaProgress(int percent, int written, int total)
     sendResponse(doc, true, true);
 }
 
-CommandHandler::CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem, DataLogger &dataLogger)
-    : sensorMgr(sensorMgr), storageMgr(storageMgr), gsmOta(gsmOta), modem(modem), logger(dataLogger)
+CommandHandler::CommandHandler(SensorManager &sensorMgr, StorageManager &storageMgr, GSM_OTA &gsmOta, A7670C &modem, DataLogger &dataLogger, powerMonitor &power)
+    : sensorMgr(sensorMgr), storageMgr(storageMgr), gsmOta(gsmOta), modem(modem), logger(dataLogger), power(power)
 {
     cmdQueue = xQueueCreate(COMMAND_QUEUE_DEPTH, sizeof(commandFormat));
     configASSERT(cmdQueue);
@@ -168,6 +168,8 @@ CommandHandler::~CommandHandler()
 void CommandHandler::begin()
 {
     _instance = this;
+
+    tid = storageMgr.getTid();
     
     modem.onMqttMessage(mqttCallback);
     modem.onBootEvent(bootCallback);
@@ -321,14 +323,33 @@ void CommandHandler::dispatch(const commandFormat &pkt)
     {
         handleSensorBroadcast(doc, pkt.formBle, pkt.formMqtt);
     }
+    else if(strcmp(cmdStr, "battery_status") == 0)
+    {
+        handleBatteryStatus(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if(strcmp(cmdStr, "solar_status") == 0)
+    {
+        handleSolarStatus(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if(strcmp(cmdStr, "system_power") == 0)
+    {
+        handleSystemPower(doc, pkt.formBle, pkt.formMqtt);
+    }
     else if (strcmp(cmdStr, "system_info") == 0)
     {
-        if (!getSystemInfo(doc, pkt.formBle, pkt.formMqtt))
-        {
-            doc["status"] = "error";
-            doc["error"] = "failed_get_system_info";
-        }
-        sendResponse(doc, pkt.formBle, pkt.formMqtt);
+        getSystemInfo(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if(strcmp(cmdStr, "send_sms") == 0)
+    {
+        handleSendSMS(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if(strcmp(cmdStr, "save_tid") == 0)
+    {
+        handleSaveTid(doc, pkt.formBle, pkt.formMqtt);
+    }
+    else if (strcmp(cmdStr, "gsm_reset") == 0)
+    {
+        handleResetGsm(doc, pkt.formBle, pkt.formMqtt);
     }
     else if (strcmp(cmdStr, "update_device") == 0)
     {
@@ -336,24 +357,7 @@ void CommandHandler::dispatch(const commandFormat &pkt)
     }
     else if (strcmp(cmdStr, "log_data") == 0)
     {
-        size_t sz = 1024;
-        PacketData lastPacket;
-        bool lastPacketPending = false;
-        Serial.print("GET PACKET");
-        lastPacket = logger.getPacket(sz);
-        lastPacketPending = (lastPacket.packetSize > 0);
-
-        if (lastPacket.packetSize == 0)
-        {
-            Serial.println("  (no pending data)");
-            return;
-        }
-
-        Serial.printf("  Offset range : [%u .. %u]\n", lastPacket.startOffset, lastPacket.endOffset);
-        Serial.printf("  Packet size  : %u B\n", lastPacket.packetSize);
-        Serial.println("  --- payload ---");
-        Serial.print(lastPacket.data);
-        Serial.println("  ---------------");
+        handleLogData(doc, pkt.formBle, pkt.formMqtt);
     }
     else if (strcmp(cmdStr, "log_info") == 0)
     {
@@ -365,10 +369,19 @@ void CommandHandler::dispatch(const commandFormat &pkt)
         Serial.printf("  Pending      : %u B\n", info.pendingBytes);
         Serial.printf("  Full         : %s\n", info.full ? "YES !!!" : "no");
         Serial.println("  ---------------");
+
+        doc["status"] = "ok";
+        doc["msg"] = "Log info retrieved";
+        doc["current_size"] = info.currentSize;
+        doc["max_size"] = info.maxSize;
+        doc["uploaded_offset"] = info.uploadedOffset;
+        doc["pending_bytes"] = info.pendingBytes;
+        doc["full"] = info.full;
+        sendResponse(doc, pkt.formBle, pkt.formMqtt);
     }
     else if (strcmp(cmdStr, "log_clear") == 0)
     {
-        PacketData lastPacket        = logger.getPacket(1024);
+        PacketData lastPacket        = logger.getPacket(LOG_DATA_MAX_SIZE);
         // if (!lastPacketPending)
         // {
         //     Serial.println("  No packet pending – run 'packet' first.");
@@ -379,6 +392,10 @@ void CommandHandler::dispatch(const commandFormat &pkt)
         // lastPacketPending = false;
         // printInfo();
         Serial.println("STRESS DONE");
+
+        doc["status"] = "ok";
+        doc["msg"] = "Log cleared successfully";
+        sendResponse(doc, pkt.formBle, pkt.formMqtt);
     }
     else if(strcmp(cmdStr, "reboot") == 0)
     {
@@ -392,6 +409,7 @@ void CommandHandler::dispatch(const commandFormat &pkt)
         Serial.printf("[CMD] dispatch: unknown command '%s'\n", cmdStr);
         doc["status"] = "error";
         doc["error"] = "unknown_command";
+        doc["msg"] = "Unknown command";
         sendResponse(doc, pkt.formBle, pkt.formMqtt);
     }
 }
@@ -451,21 +469,26 @@ void CommandHandler::handleSensorBroadcast(JsonDocument &doc, bool fromBle, bool
 bool CommandHandler::getSystemInfo(JsonDocument &doc, bool fromBle, bool fromMqtt)
 {
     int rssi;
-    String time;
+    String time, ip;
     getTimeStr(time);
     modem.getSignalStrength(rssi);
+    modem.getIp(ip);
 
     doc["uptime_s"] = esp_timer_get_time() / 1000000ULL;
+    doc["tid"] = tid;
     doc["free_heap"] = ESP.getFreeHeap();
-    doc["gsm_signal"] = rssi;
     doc["mqtt_connected"] = modem.getMQTTConnected();
-    doc["device_mac"] = _deviceMac;
+    doc["mac"] = _deviceMac;
     doc["firmware_version"] = FIRMWARE_VERSION;
     doc["device_name"] = DEVICE_NAME;
     doc["current_time"] = time;
+    doc["rssi"] = rssi;
+    doc["ip"] = ip;
 
     doc["status"] = "ok";
     doc["msg"] = "System information retrieved";
+
+    sendResponse(doc, fromBle, fromMqtt);
 
     return true;
 }
@@ -537,3 +560,132 @@ void CommandHandler::handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromM
     esp_restart();
     // vTaskResume(gsmHandle);
 }
+
+void CommandHandler::handleBatteryStatus(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    power.getBatteryStatusJson(doc);
+
+    doc["status"] = "ok";
+    doc["msg"] = "Battery data retrieved";
+    sendResponse(doc, fromBle, fromMqtt);
+}
+
+void CommandHandler::handleSolarStatus(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    power.getSolarStatusJson(doc);
+    doc["status"] = "ok";
+    doc["msg"] = "Solar data retrieved";
+    sendResponse(doc, fromBle, fromMqtt);
+}
+
+void CommandHandler::handleSystemPower(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    power.getSystemPowerJson(doc);
+    doc["status"] = "ok";
+    doc["msg"] = "System power data retrieved";
+    sendResponse(doc, fromBle, fromMqtt);
+}
+
+void CommandHandler::handleSendSMS(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    String number = doc["num"] | "";
+    String message = doc["msg"] | "Land Slide Monitoring Live";
+
+    if (number == "" || message == "")
+    {
+        doc["status"] = "error";
+        doc["error"] = "missing_number_or_message";
+        sendResponse(doc, fromBle, fromMqtt);
+        return;
+    }
+
+    bool success = modem.sendSms(number, message);
+
+    if (success)
+    {
+        doc["status"] = "ok";
+        doc["msg"] = "SMS sent successfully";
+    }
+    else
+    {
+        doc["status"] = "error";
+        doc["error"] = "failed_to_send_sms";
+        doc["msg"] = "Failed to send SMS";
+    }
+    sendResponse(doc, fromBle, fromMqtt);
+}
+
+void CommandHandler::handleSaveTid(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    String newTid = doc["tid"] | "";
+    if (newTid == "")
+    {
+        doc["status"] = "error";
+        doc["error"] = "invalid_tid";
+        doc["msg"] = "TID is missing";
+        sendResponse(doc, fromBle, fromMqtt);
+        return;
+    }
+
+    tid = newTid;
+    storageMgr.saveTid(tid);
+
+    doc["status"] = "ok";
+    doc["msg"] = String("TID updated to ") + tid;
+    sendResponse(doc, fromBle, fromMqtt);
+}
+
+void CommandHandler::handleResetGsm(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+    modem.setModuleReset(true);
+
+    doc["msg"] = "GSM module reseting...";
+    sendResponse(doc, fromBle, fromMqtt);
+
+    if(modem.moduleReset())
+    {
+        modem.mqttConnect();
+        modem.mqttSubscribe(getTopic());
+
+        doc["status"] = "ok";
+        doc["msg"] = "GSM module back online";
+    }
+    else
+    {
+        doc["status"] = "error";
+        doc["msg"] = "Failed to reset GSM module";
+    }
+    modem.setModuleReset(false);
+    sendResponse(doc, fromBle, fromMqtt);
+}
+
+void CommandHandler::handleLogData(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+        size_t sz = LOG_DATA_MAX_SIZE;
+        PacketData lastPacket;
+        bool lastPacketPending = false;
+        Serial.print("GET PACKET");
+        lastPacket = logger.getPacket(sz);
+        lastPacketPending = (lastPacket.packetSize > 0);
+
+        if (lastPacket.packetSize == 0)
+        {
+            Serial.println("  (no pending data)");
+            return;
+        }
+
+        Serial.printf("  Offset range : [%u .. %u]\n", lastPacket.startOffset, lastPacket.endOffset);
+        Serial.printf("  Packet size  : %u B\n", lastPacket.packetSize);
+        Serial.println("  --- payload ---");
+        Serial.print(lastPacket.data);
+        Serial.println("  ---------------");
+
+        doc["status"] = "ok";
+        doc["packet_size"] = lastPacket.packetSize;
+        doc["start_offset"] = lastPacket.startOffset;
+        doc["end_offset"] = lastPacket.endOffset;
+        doc["data"] = String(lastPacket.data);
+        doc["msg"] = "Data packet retrieved";
+        sendResponse(doc, fromBle, fromMqtt);
+}
+

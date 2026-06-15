@@ -21,6 +21,7 @@
 #define BMP180_ADDRESS    0x77
 #define BH1750_ADDRESS    0x23
 #define MPU6050_ADDRESS   0x68
+#define INA3221_ADDRESS   0x40
 
 // ==================== Sensor State ====================
 #define SENSOR_ON         1
@@ -108,6 +109,8 @@
 
 #define DEFAULT_TID "t1"
 #define API_HIT_INTERVAL_MS 10*60*1000  // 10 minutes
+
+#define LOG_DATA_MAX_SIZE 512
 
 #define OTA_URL "https://raw.githubusercontent.com/parveen-jangir/mqtt_bin_file/main/test_esp_ota.bin"
 #endif // CONFIG_H

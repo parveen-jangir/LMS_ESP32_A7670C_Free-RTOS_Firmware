@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <Adafruit_INA3221.h>
 #include "config.h"
+#include <ArduinoJson.h>
 
 enum PowerFlowState {
     SOLAR_ONLY,
@@ -26,7 +27,7 @@ private:
     float prevBatteryPower = 0.0;
 
 public:
-    powerMonitor(uint8_t addr = 0x40);
+    powerMonitor(uint8_t addr = INA3221_ADDRESS);
 
     bool begin();
 
@@ -50,6 +51,9 @@ public:
     float getBatteryDischargedWh();
 
     void resetEnergyCounters();
+    void getBatteryStatusJson(JsonDocument& doc);
+    void getSolarStatusJson(JsonDocument& doc);
+    void getSystemPowerJson(JsonDocument& doc);
 
     // Call this in loop() as fast as you want (recommended every 100-500ms)
     void update();

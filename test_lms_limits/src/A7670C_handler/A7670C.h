@@ -107,7 +107,18 @@ public:
         return _mqttConnected;
     }
 
+    bool getModuleReset()
+    {
+        return _onReset;
+    }
+
+    void setModuleReset(bool reset)
+    {
+        _onReset = reset;
+    }
+
     bool getSignalStrength(int &rssi);
+    bool getIp(String &ip);
 
     bool setTime(String &formatted);
 
@@ -121,9 +132,12 @@ public:
     void pauseTasks();
     void resumeTasks();
 
+    bool sendSms(const String &number, const String &message);
+
 private: 
     int _pwrPin;
     bool _isPoweredOn;
+    bool _onReset;
 
     DataLogger &logger;
 

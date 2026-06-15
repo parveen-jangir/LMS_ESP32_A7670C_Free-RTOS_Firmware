@@ -7,6 +7,7 @@
 #include <vector>
 #include <Preferences.h>
 #include "DataLogger/DataLogger.h"
+#include "config.h"
 
 class StorageManager
 {
@@ -29,6 +30,9 @@ public:
     size_t totalSpace();
     size_t usedSpace();
     size_t freeSpace();
+
+    void saveTid(const String &tid);
+    String getTid();
 
 private:
     DataLogger &dataLogger;

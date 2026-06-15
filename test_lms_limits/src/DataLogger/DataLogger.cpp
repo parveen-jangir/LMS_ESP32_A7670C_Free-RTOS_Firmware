@@ -22,6 +22,7 @@ DataLogger::DataLogger()
     , _maxFileSize(102400)
     , _uploadedOffset(0)
     , _mutex(nullptr)
+    , isInitialized(false)
 {}
 
 DataLogger::~DataLogger()
@@ -53,6 +54,7 @@ bool DataLogger::begin(const char* logFile, const char* idxFile, size_t maxFileS
     if (_uploadedOffset > sz)
         _uploadedOffset = 0;
 
+    isInitialized = true;
     return true;
 }
 
@@ -62,6 +64,7 @@ bool DataLogger::begin(const char* logFile, const char* idxFile, size_t maxFileS
 
 bool DataLogger::log(char level, const String& message)
 {
+    if(isInitialized == false) return false;
     String timestamp = getFromatedTime();
     
     MutexGuard guard(_mutex);

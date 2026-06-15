@@ -23,6 +23,7 @@ A7670C::A7670C(HardwareSerial &serial, int pwrPin, DataLogger &dataLogger):
     _mqttPort = 1883;
     _mqttConnected = false;
     _httpInAction = false;
+    _onReset = false;
     // _pwrPin = pwrPin;
 }
 
@@ -1021,6 +1022,34 @@ bool A7670C::getSignalStrength(int &rssi)
     return rssi != 99;
 }
 
+bool A7670C::getIp(String &ip)
+{
+    String result;
+    bool ok = sendATWait(
+        "AT+CGPADDR=1",
+        [](const String &l)
+        { return l.startsWith("+CGPADDR:") || l.startsWith("ERROR"); },
+        result,
+        3000);
+
+    if (!ok)
+        return false;
+
+    if (result.startsWith("ERROR")){
+        ip = "0.0.0.0";
+        return true;
+    }
+
+    // result = "+CGPADDR: 192.168.1.100"
+    int colon = result.indexOf(':');
+    if (colon < 0)
+        return false;
+
+    ip = result.substring(colon + 1);
+
+    return true;
+}
+
 void A7670C::pauseTasks()
 {
     if (_rxTaskHandle)
@@ -1035,6 +1064,68 @@ void A7670C::resumeTasks()
     {
         vTaskResume(_rxTaskHandle);
     }
+}
+
+bool A7670C::sendSms(const String &number, const String &message)
+{
+    String result;
+
+    // Set SMS mode to text
+    bool ok = sendATWait(
+        "AT+CMGF=1",
+        [](const String &l)
+        { return l.startsWith("OK") || l.startsWith("ERROR"); },
+        result,
+        2000);
+
+    if (!ok || result.startsWith("ERROR"))
+    {
+        Serial.println("[SMS] CMGF failed");
+        return false;
+    }
+
+    ok = sendATWait(
+        "AT+CSCS=\"GSM\"",
+        [](const String &l)
+        { return l.startsWith("OK") || l.startsWith("ERROR"); },
+        result,
+        2000);
+
+    if (!ok || result.startsWith("ERROR"))
+    {
+        Serial.println("[SMS] CSCS failed");
+        return false;
+    }
+
+    // Send command to set recipient number
+    String cmd = "AT+CMGS=\"" + number + "\"";
+    sendAT(cmd);
+
+    String smsData = message;
+    smsData += (char)0x1A; // Ctrl+Z to indicate end of message
+
+    if (!_sendPromptData(smsData))
+    {
+        Serial.println("[SMS] msg prompt failed");
+        return false;
+    }
+
+    // Wait for confirmation
+    ok = sendATWait(
+        "",
+        [](const String &l)
+        { return l.startsWith("+CMGS:") || l.startsWith("ERROR"); },
+        result,
+        10000);
+
+    if (!ok || result.startsWith("ERROR"))
+    {
+        Serial.println("[SMS] Send failed");
+        return false;
+    }
+
+    Serial.println("[SMS] Sent successfully");
+    return true;
 }
 
 // ─────────────────────────────────────────────────────────────────
