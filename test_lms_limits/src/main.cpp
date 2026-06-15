@@ -91,6 +91,8 @@ void setup()
     cmdHandler.begin();
 
     gsmOta.onProgress(onProgress);
+    sensorManager.readAllSensors();
+    sensorManager.printLastReadings();
 
     // setupLoRa();
     // sendLoraAlaram_old();

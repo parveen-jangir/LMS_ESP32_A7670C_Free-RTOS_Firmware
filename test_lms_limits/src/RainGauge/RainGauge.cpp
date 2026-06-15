@@ -4,30 +4,36 @@
 static RainGaugeSensor* rainGaugeInstance = nullptr;
 
 void IRAM_ATTR RainGaugeSensor::isrHandler() {
-    if (rainGaugeInstance) {
-        unsigned long now = millis();
-        // Debounce
-        if ((now - rainGaugeInstance->lastTipDebounceTime) > RAIN_GAUGE_DEBOUNCE_MS) {
-            rainGaugeInstance->lastReading.tipCount++;
-            rainGaugeInstance->lastReading.totalRainfall = 
-                rainGaugeInstance->lastReading.tipCount * rainGaugeInstance->tipVolume;
-            rainGaugeInstance->lastTipDebounceTime = now;
-            rainGaugeInstance->lastReading.lastTipTime = now;
-        }
+    if (rainGaugeInstance == nullptr) return;
+
+    // Use FreeRTOS ticks, NOT millis() inside the ISR
+    uint32_t currentTick = xTaskGetTickCountFromISR();
+    
+    if ((currentTick - rainGaugeInstance->lastTipTick) > pdMS_TO_TICKS(100)) {
+        rainGaugeInstance->isrTipCount++;
+        rainGaugeInstance->lastTipTick = currentTick;
     }
 }
 
 RainGaugeSensor::RainGaugeSensor(uint8_t sensorPin)
     : pin(sensorPin), isInitialized(false), tipVolume(0.2794),
-      lastTipDebounceTime(0) {
+      isrTipCount(0), lastTipTick(0) {
     lastReading = {0, 0, 0, 0, true};
     rainGaugeInstance = this;
 }
 
 bool RainGaugeSensor::initialize() {
-    pinMode(pin, INPUT_PULLUP);
+    // Set pin with internal pullup
+    pinMode(pin, INPUT);
     
-    // Attach interrupt on falling edge (tipping bucket)
+    // CRITICAL: Wait for the pin voltage to stabilize before attaching the interrupt
+    delay(50);
+    
+    // Reset counters right before attaching
+    isrTipCount = 0;
+    lastTipTick = xTaskGetTickCount();
+    
+    // Attach interrupt on falling edge
     attachInterrupt(digitalPinToInterrupt(pin), isrHandler, FALLING);
     
     isInitialized = true;
@@ -41,6 +47,15 @@ bool RainGaugeSensor::initialize() {
 bool RainGaugeSensor::readSensor() {
     if (!isInitialized) return false;
     
+    // Atomically read the volatile 32-bit counter (No spinlock needed)
+    uint32_t currentTips = isrTipCount;
+    
+    // Perform float math OUTSIDE the ISR
+    lastReading.tipCount = currentTips;
+    lastReading.totalRainfall = (float)currentTips * tipVolume;
+    
+    // Convert FreeRTOS ticks back to roughly millis for the timestamp
+    lastReading.lastTipTime = lastTipTick * portTICK_PERIOD_MS;
     lastReading.timestamp = millis();
     lastReading.isValid = true;
     
@@ -65,7 +80,7 @@ RainGaugeData RainGaugeSensor::getLastReading() const {
 
 void RainGaugeSensor::setTipVolume(float volume) {
     tipVolume = volume;
-    lastReading.totalRainfall = lastReading.tipCount * tipVolume;
+    lastReading.totalRainfall = (float)isrTipCount * tipVolume;
 }
 
 float RainGaugeSensor::getTipVolume() const {
@@ -73,8 +88,9 @@ float RainGaugeSensor::getTipVolume() const {
 }
 
 void RainGaugeSensor::resetTipCount() {
+    isrTipCount = 0;
     lastReading.tipCount = 0;
-    lastReading.totalRainfall = 0;
+    lastReading.totalRainfall = 0.0f;
     lastReading.timestamp = millis();
 }
 

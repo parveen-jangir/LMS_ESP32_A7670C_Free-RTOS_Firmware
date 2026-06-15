@@ -8,11 +8,13 @@
 class RainGaugeSensor {
 private:
     uint8_t pin;
-    uint8_t interruptPin;
     RainGaugeData lastReading;
     bool isInitialized;
     float tipVolume;  // mm per tip
-    unsigned long lastTipDebounceTime;
+    
+    // Lock-Free Volatile State 
+    volatile uint32_t isrTipCount;
+    volatile uint32_t lastTipTick; // Using FreeRTOS ticks for safety
     
     // Static method for ISR
     static void IRAM_ATTR isrHandler();
@@ -28,12 +30,12 @@ public:
     void disable();
     bool isEnabled() const;
     
-    // Read sensor data (updates with interrupt)
+    // Read sensor data
     bool readSensor();
     RainGaugeData getLastReading() const;
     
     // Calibration
-    void setTipVolume(float volume);  // mm per tip
+    void setTipVolume(float volume);
     float getTipVolume() const;
     
     // Reset counter
