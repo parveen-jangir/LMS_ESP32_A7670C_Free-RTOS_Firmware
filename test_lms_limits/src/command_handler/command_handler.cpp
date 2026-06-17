@@ -417,6 +417,24 @@ void CommandHandler::dispatch(const commandFormat &pkt)
         doc["msg"] = "Log cleared successfully";
         sendResponse(doc, pkt.formBle, pkt.formMqtt);
     }
+    else if (strcmp(cmdStr, "log_reset") == 0)
+    {
+        bool ok = logger.clear();
+
+        if (ok)
+        {
+            doc["status"] = "ok";
+            doc["msg"] = "Log reset successfully";
+            logger.log('I', "[LOGGER] reset success");
+        }
+        else
+        {
+            doc["status"] = "error";
+            doc["msg"] = "Log reset failed";
+            logger.log('E', "[LOGGER] reset failed");
+        }
+        sendResponse(doc, pkt.formBle, pkt.formMqtt);
+    }
     else if(strcmp(cmdStr, "reboot") == 0)
     {
         doc["status"] = "ok";
@@ -539,6 +557,9 @@ time_t CommandHandler::getTimeStr(String &formatted)
 
 void CommandHandler::handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromMqtt)
 {
+    doc["msg"] = "Starting OTA update...";
+    sendResponse(doc, fromBle, fromMqtt);
+    
     // modem.mqttDisconnect();
     vTaskSuspend(apiHandle);
     // vTaskSuspend(gsmHandle);

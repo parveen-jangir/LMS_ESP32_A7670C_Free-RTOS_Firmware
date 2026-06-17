@@ -1322,11 +1322,11 @@
       <div class="chard">
         <div class="ctitle">Test</div>
       </div>
-      <div class="cbody">
+      <!-- <div class="cbody">
         <div class="card">
           <div class="chard">
             <div class="ctitle">Test</div>
-          </div>
+          </div> -->
 
           <div class="cbody">
 
@@ -1366,8 +1366,8 @@
                 API Test
               </div>
 
-              <textarea id="apiPayload" class="at-in" rows="4" placeholder='{"message":"hello"}'
-                style="width:100%;resize:vertical;margin-bottom:6px"></textarea>
+              <!-- <textarea id="apiPayload" class="at-in" rows="4" placeholder='{"message":"hello"}'
+                style="width:100%;resize:vertical;margin-bottom:6px"></textarea> -->
 
               <button class="btn btn-s" onclick="gsmTestAPI()">
                 Send API Request
@@ -1390,14 +1390,14 @@
               </button>
             </div>
 
-            <div class="result" id="gsm-result">
+            <!-- <div class="result" id="gsm-result">
               Run a test to see result.
-            </div>
+            </div> -->
 
           </div>
-        </div>
+        <!-- </div>
         <div class="result" id="gsm-result">Run a test to see result.</div>
-      </div>
+      </div> -->
     </div>
 
     <div class="card">
@@ -2024,7 +2024,7 @@
     function gsmTestSms() {
       ws_send({
         type: 'send_sms',
-        number: document.getElementById('smsNumber').value,
+        num: document.getElementById('smsNumber').value,
       });
     }
 
