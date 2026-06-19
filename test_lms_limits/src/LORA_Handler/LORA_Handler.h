@@ -12,7 +12,7 @@
 #define RH_FLAGS 0x00
 
 bool setupLoRa();
-void sendLoraAlaram();
+bool sendLoraAlaram();
 void sendLoraAlaram_old();
 
 bool TestAlaram(uint8_t id);

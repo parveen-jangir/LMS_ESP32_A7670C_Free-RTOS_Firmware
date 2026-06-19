@@ -16,6 +16,7 @@
 #include "config.h"
 #include "DataLogger/DataLogger.h"
 #include "power_handler/power_handler.h"
+#include "LORA_Handler/LORA_Handler.h"
 
 struct commandFormat
 {
@@ -116,6 +117,7 @@ private:
     void handleMpuReset(JsonDocument &doc, bool fromBle, bool fromMqtt);
     void handleRainReset(JsonDocument &doc, bool fromBle, bool fromMqtt);
     String urlEncodeSpaces(const String &input);
+    void handleLoraAlaram(JsonDocument &doc, bool fromBle, bool fromMqtt);
 
     static CommandHandler *_instance;
 

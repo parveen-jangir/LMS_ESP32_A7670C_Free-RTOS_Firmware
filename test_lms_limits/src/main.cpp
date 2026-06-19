@@ -92,8 +92,7 @@ void setup()
 
     gsmOta.onProgress(onProgress);
 
-    // setupLoRa();
-    // sendLoraAlaram_old();
+    setupLoRa();
 }
 
 // ─── Loop ─────────────────────────────────────────────────────────────────────
@@ -101,6 +100,6 @@ void loop()
 {
     vTaskDelay(pdMS_TO_TICKS(20000));
     
-    // sendLoraAlaram_old();
+
 }
 

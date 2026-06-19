@@ -541,6 +541,10 @@ void CommandHandler::dispatch(const commandFormat &pkt)
         sendResponse(doc, pkt.formBle, pkt.formMqtt);
         esp_restart();
     }
+    else if(strcmp(cmdStr, "lora_trigger") == 0)
+    {
+        handleLoraAlaram(doc, pkt.formBle, pkt.formMqtt);
+    }   
     else
     {
         Serial.printf("[CMD] dispatch: unknown command '%s'\n", cmdStr);
@@ -846,5 +850,32 @@ void CommandHandler::handleRainReset(JsonDocument &doc, bool fromBle, bool fromM
 
     doc["status"] = "ok";
     doc["msg"] = "Rain count reset done";
+    sendResponse(doc, fromBle, fromMqtt);
+}
+
+void CommandHandler::handleLoraAlaram(JsonDocument &doc, bool fromBle, bool fromMqtt)
+{
+   // The HTML sends: { "type": "lora_trigger", "value": 1 }
+    int triggerValue = doc["value"] | 0;
+    
+    Serial.printf("[CMD] Triggering LoRa alarm with value: %d\n", triggerValue);
+
+    // Call your actual LoRa alarm function
+    // Assuming it returns a boolean indicating success
+    bool success = sendLoraAlaram(); 
+
+    // Prepare the response expected by the frontend: { "type": "lora_result", "sent": true }
+    doc.clear();
+    doc["type"] = "lora_result";
+    doc["sent"] = success;
+
+    if (success) {
+        doc["status"] = "ok";
+        doc["msg"] = "LoRa packet sent!";
+    } else {
+        doc["status"] = "error";
+        doc["msg"] = "Failed to send LoRa packet.";
+    }
+
     sendResponse(doc, fromBle, fromMqtt);
 }

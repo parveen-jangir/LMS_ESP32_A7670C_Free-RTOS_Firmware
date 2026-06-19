@@ -2,7 +2,7 @@
 
 bool LoRaEnabled = false;
 bool ACK_Recv = false;
-uint8_t payload[] = { '1', 0x00 };
+uint8_t payload[] = {'1', 0x00};
 
 void LoraCallback(int packetSize)
 {
@@ -12,8 +12,9 @@ void LoraCallback(int packetSize)
 
     for (int i = 0; i < packetSize; i++)
     {
-        Serial.print((char)LoRa.read());
-        msg += (char)LoRa.read();
+        char c = (char)LoRa.read();
+        Serial.print(c);
+        msg += c;
     }
 
     if (msg == "ACK")
@@ -30,17 +31,13 @@ bool setupLoRa()
     {
         Serial.print("Connecting to LoRa...Try ");
         Serial.println(count);
-        delay(500);
+        vTaskDelay(pdMS_TO_TICKS(500));
         if (++count > 10)
         {
             Serial.println("LoRa init failed. Check your connections.");
             return false;
         }
     }
-    LoRa.setTxPower(LORA_TX_POWER);
-    LoRa.setSpreadingFactor(LORA_SPREADING_FACTOR);
-    LoRa.setSyncWord(0x39);
-    LoRa.enableCrc();
 
     // Setting Lora Callback function on recived data
     LoRa.onReceive(LoraCallback);
@@ -62,12 +59,19 @@ void sendLoraAlaram_old() // Triggierg hooter with old code
     LoRa.endPacket();
 }
 
-void sendLoraAlaram()
+bool sendLoraAlaram()
 {
     Serial.println("Sending LoRa Alaram...");
     LoRa.beginPacket();
     LoRa.println("Alaram"); // Trigger all the Hooter
     LoRa.endPacket();
+
+    vTaskDelay(pdMS_TO_TICKS(100)); // cooldown period to avoid flooding
+     LoRa.beginPacket();
+    LoRa.println("Alaram"); // Trigger all the Hooter
+    LoRa.endPacket();
+
+    return true; // Assuming the send operation is always successful for this example
 }
 
 // Test function to send a message with the Hooters ID
@@ -83,7 +87,7 @@ bool TestHooters(uint8_t id)
     LoRa.print("ACK"); // Sending ACK to trigger response from hooter
     LoRa.endPacket();
 
-    delay(1000); // cooldown period to avoid flooding
+    vTaskDelay(pdMS_TO_TICKS(1000)); // cooldown period to avoid flooding
 
     LoRa.beginPacket();
     LoRa.print("ID:");
@@ -101,7 +105,7 @@ bool TestHooters(uint8_t id)
         {
             count++;
         }
-        delay(100); // small delay to avoid busy waiting
+        vTaskDelay(pdMS_TO_TICKS(100)); // small delay to avoid busy waiting
     }
 
     if (ACK_Recv == false) // if ack not recived
@@ -119,7 +123,7 @@ bool TestAlaram(uint8_t id)
     LoRa.print("Test_Alaram"); // Setting Test Alaram to 1
     LoRa.endPacket();
 
-    delay(1000); // cooldown period to avoid flooding
+    vTaskDelay(pdMS_TO_TICKS(1000)); // cooldown period to avoid flooding
 
     LoRa.beginPacket();
     LoRa.print("ID:");
@@ -137,7 +141,7 @@ bool TestAlaram(uint8_t id)
         {
             count++;
         }
-        vTaskDelay(100); // small delay to avoid busy waiting
+        vTaskDelay(pdMS_TO_TICKS(100)); // small delay to avoid busy waiting
     }
 
     if (ACK_Recv == false) // if ack not recived
@@ -179,6 +183,7 @@ bool SetHooterID(uint8_t id)
         {
             count++;
         }
+        vTaskDelay(pdMS_TO_TICKS(100)); // small delay to avoid busy waiting
     }
 
     if (ACK_Recv == false) // if ack not recived
