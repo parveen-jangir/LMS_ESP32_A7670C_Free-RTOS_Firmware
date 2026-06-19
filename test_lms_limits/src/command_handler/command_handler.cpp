@@ -66,12 +66,23 @@ void CommandHandler::handleNetworkEvent(const String &line)
 
 void CommandHandler::handleHttpAction(const HttpResponse &response)
 {
+    _lastHttpResponse = response;
+
     Serial.println("[HTTP] Action: " + String(response.statusCode));
 
     Serial.println("        Success: " + String(response.success ? "YES" : "NO"));
     Serial.println("        Data length: " + String(response.dataLength) + " bytes");
     Serial.println("        Response code: " + String(response.statusCode));
-    logger.log('I', "[HTTP] Action: " + String(response.statusCode));
+    
+    if(_instance->_currentHttpAction == httpActionType::LOG_UPLOAD)
+    {
+        logger.log('I', "[HTTP] Action 3: " + String(response.statusCode));
+    }
+    else if(_instance->_currentHttpAction == httpActionType::LMS_API)
+    {
+        logger.log('I', "[HTTP] Action 2: " + String(response.statusCode));
+    }
+    _instance->_currentHttpAction = httpActionType::NONE;
 }
 
 void CommandHandler::onMqttMessage(const A7670C::MQTTMessage &msg)
@@ -201,6 +212,14 @@ void CommandHandler::begin()
         this,
         API_TASK_PRIORITY,
         &apiHandle);
+
+    xTaskCreate(
+        reconnectMqttTask,
+        "ReconnectMqtt",
+        MQTT_RECONNECT_TASK_STACK_SIZE,
+        this,
+        MQTT_RECONNECT_TASK_PRIORITY,
+        &mqttReconnectHandle);
 }
 
 void CommandHandler::setupMqtt()
@@ -258,18 +277,97 @@ void CommandHandler::workerLoop()
 void CommandHandler::apiTask(void *param)
 {
     CommandHandler *self = static_cast<CommandHandler *>(param);
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(7000));
 
     while (true)
     {
+        while (self->logger.isReadyForUpload())
+        {
+            PacketData lastPacket = self->logger.getPacket(LOG_DATA_UPLOAD_SIZE);
+            String payload = String(lastPacket.data);
+
+            payload = self->urlEncodeSpaces(payload);
+            
+            String uploadUrl = String(LOG_UPLOAD_URL) + self->getDeviceMac() + "&tid=" + String(self->tid) + "&data=" + payload + "&fileName=" + String(self->getDeviceMac()) + "_" + String(self->tid);
+            
+            self->modem.hitHttpGetRequest(uploadUrl);
+            self->_currentHttpAction = httpActionType::LOG_UPLOAD;
+            Serial.println("[LOG] upload URL: " + uploadUrl);
+
+            while (self->modem.getHttpInAction())
+            {
+                // Serial.println("[LOG] HTTP in action...");
+                vTaskDelay(pdMS_TO_TICKS(20));
+            }
+
+            if (self->_lastHttpResponse.success)
+            {
+                PacketData lastPacket = self->logger.getPacket(LOG_DATA_UPLOAD_SIZE);
+                self->logger.markUploaded(lastPacket.endOffset);
+            }
+            else
+            {
+                Serial.println("[LOG] upload failed, will retry later");
+            }
+        }
+
         String apiUrl = self->sensorMgr.generateApiUrl(self->tid);
         Serial.println("[API] URL: " + apiUrl);
-
         self->modem.hitHttpGetRequest(apiUrl);
+        self->_currentHttpAction = httpActionType::LMS_API;
 
         vTaskDelay(pdMS_TO_TICKS(API_HIT_INTERVAL_MS));
     }
     vTaskDelete(nullptr);
+}
+
+void CommandHandler::reconnectMqttTask(void *param)
+{
+    CommandHandler *self = static_cast<CommandHandler *>(param);
+    vTaskDelay(pdMS_TO_TICKS(10000));
+
+    while (true)
+    {
+        vTaskDelay(pdMS_TO_TICKS(20000));
+        int count = 0;
+
+        while (!self->modem.getMQTTConnected() && !self->modem.getModuleReset())
+        {
+            self->modem.mqttConnect();
+            if (self->modem.mqttSubscribe(self->getTopic()))
+            {
+                String formatted;
+                self->modem.setTime(formatted);
+            }
+
+            vTaskDelay(pdMS_TO_TICKS(10000));
+
+            if (count++ > 5)
+            {
+                Serial.println("[MQTT] Failed, resetting GSM module");
+                self->logger.log('E', "[MQTT] Failed, resetting GSM module");
+                self->modem.moduleReset();
+                count = 0;
+            }
+        }
+    }
+    vTaskDelete(nullptr);
+}
+
+String CommandHandler::urlEncodeSpaces(const String &input)
+{
+    String output;
+    output.reserve(input.length() + 20);
+
+    for (size_t i = 0; i < input.length(); i++)
+    {
+        if (input[i] == ' ')
+            output += "%20";
+        else
+            output += input[i];
+    }
+
+    return output;
 }
 
 void CommandHandler::dispatch(const commandFormat &pkt)
@@ -562,6 +660,7 @@ void CommandHandler::handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromM
     
     // modem.mqttDisconnect();
     vTaskSuspend(apiHandle);
+    vTaskSuspend(mqttReconnectHandle);
     // vTaskSuspend(gsmHandle);
     
     while (modem.getHttpInAction())
@@ -570,7 +669,7 @@ void CommandHandler::handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromM
         vTaskDelay(pdMS_TO_TICKS(2000));
     }
 
-    modem.pauseTasks();
+    vTaskSuspend(modem.rxTaskHandle);
 
     gsmOta.setAPN(APN);
     gsmOta.setChunkSize(1024); // optional – 1024 is default
@@ -580,7 +679,7 @@ void CommandHandler::handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromM
     OTAResult result = gsmOta.performOTA(url.c_str());
 
     // setupMqtt();
-    modem.resumeTasks();
+    vTaskResume(modem.rxTaskHandle);
 
     if (result == OTA_SUCCESS)
     {

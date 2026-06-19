@@ -4,6 +4,7 @@
 #include <LittleFS.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include "config.h"
 
 // ---------------------------------------------------------------------------
 // Structs
@@ -67,6 +68,7 @@ public:
     bool compact();
 
     String getFromatedTime();
+    bool isReadyForUpload();
 
 private:
     // Internal helpers – must be called with mutex already held
@@ -80,6 +82,7 @@ private:
     const char*    _idxFile;
     size_t         _maxFileSize;
     size_t         _uploadedOffset;
+    size_t         _min_size_upload_data = LOG_DATA_MIN_UPLOAD_SIZE;
 
     SemaphoreHandle_t _mutex;
 };

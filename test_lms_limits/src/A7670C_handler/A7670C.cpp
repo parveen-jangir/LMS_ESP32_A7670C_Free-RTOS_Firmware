@@ -42,7 +42,7 @@ bool A7670C::begin()
             GSM_TASK_STACK_SIZE,
             this,
             GSM_TASK_PRIORITY,
-            &_rxTaskHandle,
+            &rxTaskHandle,
             GSM_TASK_CORE);
 
     String formatted;
@@ -1050,21 +1050,21 @@ bool A7670C::getIp(String &ip)
     return true;
 }
 
-void A7670C::pauseTasks()
-{
-    if (_rxTaskHandle)
-    {
-        vTaskSuspend(_rxTaskHandle);
-    }
-}
+// void A7670C::pauseTasks()
+// {
+//     if (_rxTaskHandle)
+//     {
+//         vTaskSuspend(_rxTaskHandle);
+//     }
+// }
 
-void A7670C::resumeTasks()
-{
-    if (_rxTaskHandle)
-    {
-        vTaskResume(_rxTaskHandle);
-    }
-}
+// void A7670C::resumeTasks()
+// {
+//     if (_rxTaskHandle)
+//     {
+//         vTaskResume(_rxTaskHandle);
+//     }
+// }
 
 bool A7670C::sendSms(const String &number, const String &message)
 {

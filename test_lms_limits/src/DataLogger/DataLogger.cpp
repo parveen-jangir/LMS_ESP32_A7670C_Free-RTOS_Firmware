@@ -85,8 +85,8 @@ bool DataLogger::log(char level, const String& message)
     File f = LittleFS.open(_logFile, "a");
     if (!f) return false;
 
-    // Format: MMDD,HHMMSS,L,MESSAGE\n
-    String entry = timestamp + "," + level + "," + message + "\n";
+    // Format: MMDD,HHMMSS,L,MESSAGE;
+    String entry = timestamp + "," + level + "," + message + ";";
     size_t written = f.print(entry);
     f.close();
 
@@ -102,6 +102,15 @@ bool DataLogger::isFull()
     MutexGuard guard(_mutex);
     size_t sz = _fileSize();
     return (sz >= _maxFileSize && _uploadedOffset == 0);
+}
+
+bool DataLogger::isReadyForUpload()
+{
+    MutexGuard guard(_mutex);
+    size_t currentSize = _fileSize();
+    size_t sz = (currentSize > _uploadedOffset) ? (currentSize - _uploadedOffset) : 0;
+    Serial.printf("[LOGGER] isReadyForUpload? pendingBytes=%u, threshold=%u\n", sz, _min_size_upload_data);
+    return (sz >= _min_size_upload_data);
 }
 
 // ---------------------------------------------------------------------------
@@ -135,11 +144,11 @@ PacketData DataLogger::getPacket(size_t maxPacketSize)
         size_t lineStart = f.position();
 
         // Read one line into a small char buffer to avoid loading entire file
-        String line = f.readStringUntil('\n');
+        String line = f.readStringUntil(';');
         if (line.length() == 0) break;
 
-        // Account for the '\n' we consumed
-        size_t lineLen = line.length() + 1;  // +1 for '\n'
+        // Account for the ';' we consumed
+        size_t lineLen = line.length() + 1;  // +1 for ';'
 
         if (pkt.packetSize + lineLen > maxPacketSize)
         {
@@ -148,9 +157,9 @@ PacketData DataLogger::getPacket(size_t maxPacketSize)
             break;
         }
 
-        pkt.data       += line + "\n";
+        pkt.data       += line + ";";
         pkt.packetSize += lineLen;
-        pkt.endOffset   = f.position();   // byte after '\n'
+        pkt.endOffset   = f.position();   // byte after ';'
     }
 
     f.close();

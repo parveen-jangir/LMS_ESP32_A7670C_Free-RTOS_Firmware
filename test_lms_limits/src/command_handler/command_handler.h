@@ -25,6 +25,14 @@ struct commandFormat
     bool formMqtt;
 };
 
+enum class httpActionType
+{
+    NONE,
+    OTA_UPDATE,
+    LMS_API,
+    LOG_UPLOAD
+};
+
 extern time_t getTime(String *formatted);
 
 class CommandHandler
@@ -64,14 +72,18 @@ private:
     String _deviceMac;
     String _topic;
     String tid = DEFAULT_TID;
+    httpActionType _currentHttpAction = httpActionType::NONE;
+    HttpResponse _lastHttpResponse;
 
     // ── FreeRTOS ─────────────────────────────────────────────────────────────
     QueueHandle_t cmdQueue     = nullptr;
     TaskHandle_t  workerHandle = nullptr;
     TaskHandle_t  apiHandle    = nullptr;
+    TaskHandle_t  mqttReconnectHandle = nullptr;
     static void workerTask(void *param);
     // static void gsmTask(void *param);
     static void apiTask(void *param);
+    static void reconnectMqttTask(void *param);
     
     void        workerLoop();
 
@@ -103,6 +115,7 @@ private:
     void handleLogData(JsonDocument &doc, bool fromBle, bool fromMqtt);
     void handleMpuReset(JsonDocument &doc, bool fromBle, bool fromMqtt);
     void handleRainReset(JsonDocument &doc, bool fromBle, bool fromMqtt);
+    String urlEncodeSpaces(const String &input);
 
     static CommandHandler *_instance;
 

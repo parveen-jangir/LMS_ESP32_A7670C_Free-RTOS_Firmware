@@ -20,6 +20,7 @@ time_t getTime();
 class A7670C
 {
 public:
+    TaskHandle_t  rxTaskHandle;
 
     struct MQTTMessage
     {
@@ -129,8 +130,8 @@ public:
     void onCallEvent(LineCallback cb);
     void onBootEvent(LineCallback cb);
     void onNetworkEvent(LineCallback cb);
-    void pauseTasks();
-    void resumeTasks();
+    // void pauseTasks();
+    // void resumeTasks();
 
     bool sendSms(const String &number, const String &message);
 
@@ -166,7 +167,6 @@ private:
 
     ParserState   _parserState;
     MQTTMessage   _mqttMsg;
-    TaskHandle_t  _rxTaskHandle;
     HttpResponse  _httpResponse;
 
     // Pending command slot — only one active at a time

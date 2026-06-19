@@ -3,7 +3,7 @@
 
 // ==================== General Configuration ====================
 #define DEVICE_NAME         "LMS_ESP32_01"
-#define FIRMWARE_VERSION    "1.0.0"
+#define FIRMWARE_VERSION    "1.0.1"
 
 // ==================== I2C Configuration ====================
 #define I2C_SDA_PIN       21
@@ -98,6 +98,10 @@
 #define API_TASK_PRIORITY         5
 #define API_TASK_CORE             1    // Core 1 for API tasks
 
+#define MQTT_RECONNECT_TASK_STACK_SIZE 4096
+#define MQTT_RECONNECT_TASK_PRIORITY 3
+#define MQTT_RECONNECT_TASK_CORE 1
+
 // ==================== A7670C Configuration ====================
 #define APN         "airtelgprs.com"      // Your carrier APN
 #define CFG_SMS_NUMBER  "+919511511257"    // Number for SMS/call tests
@@ -111,6 +115,9 @@
 #define API_HIT_INTERVAL_MS 10*60*1000  // 10 minutes
 
 #define LOG_DATA_MAX_SIZE 512
+#define LOG_DATA_UPLOAD_SIZE 300
+#define LOG_DATA_MIN_UPLOAD_SIZE 100
+#define LOG_UPLOAD_URL "http://76.13.243.127:3000/log?mac="
 
 #define OTA_URL "https://raw.githubusercontent.com/parveen-jangir/mqtt_bin_file/main/test_esp_ota.bin"
 #endif // CONFIG_H

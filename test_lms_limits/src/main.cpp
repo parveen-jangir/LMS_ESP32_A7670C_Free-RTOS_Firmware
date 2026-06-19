@@ -100,24 +100,6 @@ void setup()
 void loop()
 {
     vTaskDelay(pdMS_TO_TICKS(20000));
-    int count = 0;
-
-    while(!modem.getMQTTConnected() && !modem.getModuleReset())
-    {
-        modem.mqttConnect();
-        modem.mqttSubscribe(cmdHandler.getTopic());
-
-        vTaskDelay(pdMS_TO_TICKS(10000));
-        
-        if(count++ > 5)
-        {
-            Serial.println("[MQTT] Failed, resetting GSM module");
-            dataLogger.log('E', "[MQTT] Failed, resetting GSM module");
-            modem.moduleReset();
-            count = 0;
-        }
-
-    }
     
     // sendLoraAlaram_old();
 }
