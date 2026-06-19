@@ -308,6 +308,7 @@ void CommandHandler::apiTask(void *param)
             else
             {
                 Serial.println("[LOG] upload failed, will retry later");
+                break;
             }
         }
 
