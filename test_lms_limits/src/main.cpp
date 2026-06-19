@@ -92,7 +92,7 @@ void setup()
 
     gsmOta.onProgress(onProgress);
 
-    setupLoRa();
+    // setupLoRa();
 }
 
 // ─── Loop ─────────────────────────────────────────────────────────────────────

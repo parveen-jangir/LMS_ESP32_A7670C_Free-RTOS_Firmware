@@ -61,6 +61,8 @@ void sendLoraAlaram_old() // Triggierg hooter with old code
 
 bool sendLoraAlaram()
 {
+    bool loRaSetup = setupLoRa();
+
     Serial.println("Sending LoRa Alaram...");
     LoRa.beginPacket();
     LoRa.println("Alaram"); // Trigger all the Hooter
@@ -71,7 +73,9 @@ bool sendLoraAlaram()
     LoRa.println("Alaram"); // Trigger all the Hooter
     LoRa.endPacket();
 
-    return true; // Assuming the send operation is always successful for this example
+    LoRa.end();
+
+    return loRaSetup; // Assuming the send operation is always successful for this example
 }
 
 // Test function to send a message with the Hooters ID
