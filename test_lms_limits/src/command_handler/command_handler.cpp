@@ -38,6 +38,25 @@ void CommandHandler::httpCallback(const HttpResponse &response)
         _instance->handleHttpAction(response);
 }
 
+void CommandHandler::movementDetectedCallback(const bool motionDetected)
+{
+    if (_instance)
+    {
+        Serial.println("[MOTION] Detected");
+        _instance->logger.log('I', "[MOTION] Detected");
+
+        while (_instance->modem.getHttpInAction())
+        {
+            // Serial.println("[LOG] HTTP in action...");
+            vTaskDelay(pdMS_TO_TICKS(20));
+        }
+        String apiUrl = _instance->sensorMgr.generateApiUrl(_instance->tid);
+        Serial.println("[API] URL: " + apiUrl);
+        _instance->modem.hitHttpGetRequest(apiUrl);
+        _instance->_currentHttpAction = httpActionType::LMS_API;
+    }
+}
+
 void CommandHandler::handleMqttMessage(const A7670C::MQTTMessage &msg)
 {
     Serial.println("======== MQTT MESSAGE =========");
@@ -187,6 +206,7 @@ void CommandHandler::begin()
     modem.onBootEvent(bootCallback);
     modem.onNetworkEvent(networkCallback);
     modem.onHttpAction(httpCallback);
+    sensorMgr.onMotionDetected(movementDetectedCallback);
 
     xTaskCreate(
         workerTask,
@@ -816,15 +836,18 @@ void CommandHandler::handleLogData(JsonDocument &doc, bool fromBle, bool fromMqt
 
         if (lastPacket.packetSize == 0)
         {
-            Serial.println("  (no pending data)");
+            Serial.println("[LOG] No pending log data to upload.");
+            doc["status"] = "ok";
+            doc["msg"] = "No pending log data to upload.";
+            sendResponse(doc, fromBle, fromMqtt);
             return;
         }
 
-        Serial.printf("  Offset range : [%u .. %u]\n", lastPacket.startOffset, lastPacket.endOffset);
-        Serial.printf("  Packet size  : %u B\n", lastPacket.packetSize);
-        Serial.println("  --- payload ---");
+        Serial.printf("[LOG] Offset range : [%u .. %u]\n", lastPacket.startOffset, lastPacket.endOffset);
+        Serial.printf("[LOG] Packet size  : %u B\n", lastPacket.packetSize);
+        Serial.println("[LOG] --- payload ---");
         Serial.print(lastPacket.data);
-        Serial.println("  ---------------");
+        Serial.println("[LOG] ---------------");
 
         doc["status"] = "ok";
         doc["packet_size"] = lastPacket.packetSize;
@@ -858,7 +881,7 @@ void CommandHandler::handleLoraAlaram(JsonDocument &doc, bool fromBle, bool from
    // The HTML sends: { "type": "lora_trigger", "value": 1 }
     int triggerValue = doc["value"] | 0;
     
-    Serial.printf("[CMD] Triggering LoRa alarm with value: %d\n", triggerValue);
+    Serial.printf("[LORA] Triggering alarm with value: %d\n", triggerValue);
 
     // Call your actual LoRa alarm function
     // Assuming it returns a boolean indicating success

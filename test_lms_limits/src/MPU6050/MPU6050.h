@@ -24,6 +24,7 @@ private:
 
     // Wake/motion interrupt counter (ISR-updated, must be volatile)
     static volatile uint32_t MotionCount;
+    bool MotionDetected;
 
     // Sensitivity scales
     const float ACCEL_SCALE = 9.81f / 16384.0f;  // For ±2g range
@@ -78,6 +79,7 @@ public:
 
     // Read sensor data
     bool readSensor();
+    bool isMotionDetected();
     MPU6050Data getLastReading() const;
 
     // Software calibration offsets (applied post-scale, on top of hardware offsets)

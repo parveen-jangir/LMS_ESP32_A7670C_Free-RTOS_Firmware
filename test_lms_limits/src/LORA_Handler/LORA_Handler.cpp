@@ -6,7 +6,7 @@ uint8_t payload[] = {'1', 0x00};
 
 void LoraCallback(int packetSize)
 {
-    Serial.print("Received packet with RSSI: ");
+    Serial.print("[LORA] Received packet with RSSI: ");
     Serial.println(LoRa.packetRssi());
     String msg = "";
 
@@ -29,12 +29,12 @@ bool setupLoRa()
     uint8_t count = 0;
     while (!LoRa.begin(LORA_FREQUENCY))
     {
-        Serial.print("Connecting to LoRa...Try ");
+        Serial.print("[LORA] Connecting...");
         Serial.println(count);
         vTaskDelay(pdMS_TO_TICKS(500));
         if (++count > 10)
         {
-            Serial.println("LoRa init failed. Check your connections.");
+            Serial.println("[LORA] init failed. Check your connections.");
             return false;
         }
     }
@@ -42,13 +42,13 @@ bool setupLoRa()
     // Setting Lora Callback function on recived data
     LoRa.onReceive(LoraCallback);
     LoRaEnabled = true;
-    Serial.println("LoRa init succeeded.");
+    Serial.println("[LORA] init succeeded.");
     return true;
 }
 
 void sendLoraAlaram_old() // Triggierg hooter with old code
 {
-    Serial.println("Sending LoRa Alaram OLD...");
+    Serial.println("[LORA] Sending Alaram OLD...");
     uint8_t payloadLen = sizeof(payload);
     LoRa.beginPacket();
     LoRa.write(RH_TO);
@@ -63,7 +63,7 @@ bool sendLoraAlaram()
 {
     bool loRaSetup = setupLoRa();
 
-    Serial.println("Sending LoRa Alaram...");
+    Serial.println("[LORA] Sending Alaram...");
     LoRa.beginPacket();
     LoRa.println("Alaram"); // Trigger all the Hooter
     LoRa.endPacket();
@@ -164,7 +164,7 @@ bool TestAlaram(uint8_t id)
 // which makes ACK_Recv to true
 bool SetHooterID(uint8_t id)
 {
-    Serial.print("Setting Hooter ID to: ");
+    Serial.print("[LORA] Setting Hooter ID to: ");
     Serial.println(id);
 
     LoRa.beginPacket();

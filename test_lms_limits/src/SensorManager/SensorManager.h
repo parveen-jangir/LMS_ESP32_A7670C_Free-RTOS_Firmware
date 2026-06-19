@@ -52,7 +52,13 @@ public:
     TaskHandle_t sensorTaskHandle;
     SensorManager(DataLogger &dataLogger);
     ~SensorManager();
-    
+    typedef void (*motionCallback_t)(
+        const bool motionDetected);
+        
+    void onMotionDetected(motionCallback_t cb);
+        
+    motionCallback_t motionCallback;
+
     // Initialization
     bool initialize();
     

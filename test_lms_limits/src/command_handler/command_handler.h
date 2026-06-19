@@ -125,5 +125,6 @@ private:
     static void bootCallback(const String &line);
     static void networkCallback(const String &line);
     static void httpCallback(const HttpResponse &response);
+    static void movementDetectedCallback(const bool motionDetected);
 
 };

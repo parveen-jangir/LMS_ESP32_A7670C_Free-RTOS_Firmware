@@ -104,6 +104,7 @@ bool MPU6050Sensor::setGyroOffsetRaw(int16_t x, int16_t y, int16_t z)
 bool MPU6050Sensor::clearInterrupt()
 {
     uint8_t intStatus;
+    MotionDetected = true;
     Serial.println("[MPU6050] Clearing interrupt...");
     return readRegisters(0x3A, &intStatus, 1);
 }
@@ -364,6 +365,14 @@ void MPU6050Sensor::resetMotionCount() {
     portENTER_CRITICAL(&motionMux);
     MotionCount = 0;
     portEXIT_CRITICAL(&motionMux);
+}
+
+bool MPU6050Sensor::isMotionDetected()
+{
+    bool detected;
+    detected = MotionDetected;
+    MotionDetected = false; // Reset after reading
+    return detected;
 }
 
 bool MPU6050Sensor::readSensor()

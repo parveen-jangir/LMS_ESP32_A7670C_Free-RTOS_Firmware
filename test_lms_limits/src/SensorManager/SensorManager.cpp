@@ -37,6 +37,8 @@ SensorManager::SensorManager(DataLogger &dataLogger)
 
 SensorManager::~SensorManager() {
     stopReadingTask();
+
+    motionCallback = nullptr;
     
     if (dataMutex) vSemaphoreDelete(dataMutex);
     if (bmp180) delete bmp180;
@@ -89,11 +91,17 @@ void SensorManager::sensorTask() {
         // Read all enabled sensors
         if (bmp180Enabled && bmp180) bmp180->readSensor();
         if (bh1750Enabled && bh1750) bh1750->readSensor();
-        if (mpu6050Enabled && mpu6050) mpu6050->readSensor();
         if (dht22Enabled && dht22) dht22->readSensor();
         if (soilMoistureEnabled && soilMoisture) soilMoisture->readSensor();
         if (rainGaugeEnabled && rainGauge) rainGauge->readSensor();
-        
+        if (mpu6050Enabled && mpu6050)
+        {
+            mpu6050->readSensor();
+            if (motionCallback && mpu6050->isMotionDetected()) {
+                motionCallback(true);
+            }
+        }
+
         // Update current readings (thread-safe)
         if (xSemaphoreTake(dataMutex, portMAX_DELAY)) {
             if (bmp180) currentReadings.bmp180 = bmp180->getLastReading();
@@ -611,3 +619,5 @@ void SensorManager::resetRainCount()
     }
     Serial.println("[RainGauge] RAIN COUNT RESET DONE");
 }
+
+void SensorManager::onMotionDetected(motionCallback_t cb) { motionCallback = cb; }
