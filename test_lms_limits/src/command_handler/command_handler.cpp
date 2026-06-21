@@ -721,6 +721,7 @@ void CommandHandler::handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromM
         vTaskDelay(pdMS_TO_TICKS(2000));
     }
 
+    modem.mqttStop();
     vTaskSuspend(modem.rxTaskHandle);
 
     gsmOta.setAPN(APN);
@@ -730,11 +731,12 @@ void CommandHandler::handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromM
     String url = doc["url"] | OTA_URL;
     OTAResult result = gsmOta.performOTA(url.c_str());
 
-    // setupMqtt();
     vTaskResume(modem.rxTaskHandle);
+    modem.mqttConnect();
 
     if (result == OTA_SUCCESS)
     {
+        logger.log('I', "[OTA] done! Rebooting");
         Serial.println("[OTA] done! Rebooting in 3 s");
         delay(3000);
         doc["status"] = "ok";
@@ -743,6 +745,7 @@ void CommandHandler::handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromM
     }
     else
     {
+        logger.log('E', String("[OTA] FAILED: ") + GSM_OTA::resultToString(result) + " (code " + String((int)result) + ")");
         doc["status"] = "error";
         doc["error"] = GSM_OTA::resultToString(result);
         doc["msg"] = "rebooting...";
