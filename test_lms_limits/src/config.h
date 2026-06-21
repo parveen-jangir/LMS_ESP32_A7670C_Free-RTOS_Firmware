@@ -3,7 +3,7 @@
 
 // ==================== General Configuration ====================
 #define DEVICE_NAME         "LMS_ESP32_01"
-#define FIRMWARE_VERSION    "1.0.1"
+#define FIRMWARE_VERSION    "1.0.2"
 
 // ==================== I2C Configuration ====================
 #define I2C_SDA_PIN       21

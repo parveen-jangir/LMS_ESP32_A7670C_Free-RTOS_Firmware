@@ -31,7 +31,7 @@ A7670C::A7670C(HardwareSerial &serial, int pwrPin, DataLogger &dataLogger):
 // begin
 // ─────────────────────────────────────────────────────────────────
 
-bool A7670C::begin()
+bool A7670C::begin(int &date)
 {
     pinMode(_pwrPin, OUTPUT);
 
@@ -45,10 +45,8 @@ bool A7670C::begin()
             &rxTaskHandle,
             GSM_TASK_CORE);
 
-    String formatted;
-
     if(moduleOn())
-        setTime(formatted);
+        setTime(date);
 
     return result == pdPASS;
 }
@@ -785,8 +783,10 @@ bool A7670C::readHttpResponse(int dataLength, String &response)
 }
 
 // Get and update system time from modem's CCLK
-bool A7670C::setTime(String &timeString)
+bool A7670C::setTime(int &date)
 {
+    String timeString;
+    
     bool ok = sendATWait(
         "AT+CCLK?",
         [](const String &l){ return l.startsWith("+CCLK:") || l.startsWith("ERROR"); },
@@ -841,6 +841,9 @@ bool A7670C::setTime(String &timeString)
         utcTm->tm_sec);
 
     timeString = buffer;
+
+    date = dd;
+
     Serial.printf("[TIME] System synced: %s UTC\n", buffer);
     return true;
 }

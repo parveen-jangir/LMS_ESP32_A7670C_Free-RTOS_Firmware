@@ -41,7 +41,7 @@ public:
 
     A7670C(HardwareSerial &serial, int pwrPin, DataLogger &dataLogger);
 
-    bool begin();
+    bool begin(int &date);
 
     void sendAT(const String &cmd);
 
@@ -121,7 +121,8 @@ public:
     bool getSignalStrength(int &rssi);
     bool getIp(String &ip);
 
-    bool setTime(String &formatted);
+    // today's date is returned as an integer from 1 to 31
+    bool setTime(int &date);
 
     // ── Event Callbacks ──────────────────────────────────────────
     void onMqttMessage(MqttCallback cb);

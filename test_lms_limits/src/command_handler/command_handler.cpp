@@ -350,15 +350,29 @@ void CommandHandler::reconnectMqttTask(void *param)
     while (true)
     {
         vTaskDelay(pdMS_TO_TICKS(20000));
+        
+        // Check if the date has changed and reset motion and rain counts if it has
+        {
+            int nowDate = self->getMonthDate();
+            
+            if (nowDate != self->currentDate)
+            {
+                self->sensorMgr.resetMotionCount();
+                self->sensorMgr.resetRainCount();
+                self->logger.log('I', "[DATE] New day, reset motion & rain counts");
+            }
+            
+            self->currentDate = nowDate;
+        }
+        
         int count = 0;
-
+        
         while (!self->modem.getMQTTConnected() && !self->modem.getModuleReset())
         {
             self->modem.mqttConnect();
             if (self->modem.mqttSubscribe(self->getTopic()))
             {
-                String formatted;
-                self->modem.setTime(formatted);
+                self->modem.setTime(self->currentDate);
             }
 
             vTaskDelay(pdMS_TO_TICKS(10000));
@@ -676,6 +690,19 @@ time_t CommandHandler::getTimeStr(String &formatted)
 
     formatted = buf;
     return ist;
+}
+
+int CommandHandler::getMonthDate()
+{
+    time_t now = time(nullptr);
+    if (now < 0)
+        return -1;
+
+    time_t ist = now + (5 * 3600) + (30 * 60);
+
+    struct tm *t = gmtime(&ist);
+
+    return t->tm_mday; // Get the current date (1-31)
 }
 
 void CommandHandler::handleOtaUpdate(JsonDocument &doc, bool fromBle, bool fromMqtt)

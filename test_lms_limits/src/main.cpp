@@ -86,7 +86,7 @@ void setup()
         dataLogger.log('E', "[POWER] Failed to init");
     }
 
-    modem.begin();
+    modem.begin(cmdHandler.currentDate);
 
     cmdHandler.begin();
 

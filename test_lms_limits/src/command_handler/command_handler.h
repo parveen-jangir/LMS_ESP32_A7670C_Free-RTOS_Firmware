@@ -46,6 +46,7 @@ public:
     void onOtaProgress(int percent, int written, int total);
 
     ~CommandHandler();
+    int currentDate; // this var will hold today's date as an integer from 1 to 31
 
     String getDeviceMac() const
     {
@@ -60,6 +61,7 @@ public:
     void begin();
 
     time_t getTimeStr(String &formatted);
+    int getMonthDate();
 
     // void configSensors();
     void sendResponse(JsonDocument &response, bool webSoc = false, bool toMqtt = true);
